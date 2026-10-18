@@ -50,6 +50,9 @@ type Options struct {
 	Every    time.Duration // how often to re-scrape
 	CacheDir string        // where score sheets and players are cached between runs; "" = no cache
 	Static   bool          // pages are pre-rendered files: no live polling, no refresh button
+	// Committee is the regional committee whose tournaments are shown
+	// (COMIT, 4 = Lombardia); 0 = no tournaments.
+	Committee int
 }
 
 type Server struct {
@@ -71,6 +74,12 @@ type Server struct {
 
 	pageMu sync.Mutex // one on-demand player page fetch at a time
 	pages  map[int]*playerPage
+
+	tournaments map[int]*tournament // by IDT
+
+	teamsMu  sync.Mutex // groupTeams, memoised per data version for who()
+	teamsVer int
+	teams    map[string]string
 }
 
 func NewServer(c *fitet.Client, opt Options) *Server {
@@ -82,16 +91,23 @@ func NewServer(c *fitet.Client, opt Options) *Server {
 		newSince: map[int]time.Time{},
 		players:  map[string]*playerInfo{},
 		pages:    map[int]*playerPage{},
+
+		tournaments: map[int]*tournament{},
 	}
 	funcs := template.FuncMap{
-		"mine":   s.isMine,
-		"me":     s.isMe,
-		"iso":    func(t time.Time) string { return t.Format(time.RFC3339) },
-		"sub":    func(a, b int) int { return a - b },
-		"signed": func(n int) string { return fmt.Sprintf("%+d", n) },
-		"pct":    pct,
-		"rank":   s.rankingOf,
-		"static": func() bool { return s.Static },
+		"mine":        s.isMine,
+		"me":          s.isMe,
+		"iso":         func(t time.Time) string { return t.Format(time.RFC3339) },
+		"sub":         func(a, b int) int { return a - b },
+		"signed":      func(n int) string { return fmt.Sprintf("%+d", n) },
+		"pct":         pct,
+		"rank":        s.rankingOf,
+		"static":      func() bool { return s.Static },
+		"kind":        kindName,
+		"who":         s.who,
+		"key":         nameKey,
+		"inc":         func(i int) int { return i + 1 },
+		"tournaments": func() bool { return s.Committee != 0 },
 	}
 	for k, f := range s.langFuncs(langEN) {
 		funcs[k] = f
@@ -103,6 +119,7 @@ func NewServer(c *fitet.Client, opt Options) *Server {
 	}
 	s.loadCache()
 	s.loadPlayers()
+	s.loadTournaments()
 	return s
 }
 
@@ -131,6 +148,7 @@ func (s *Server) refresh(ctx context.Context) {
 	s.attempted = time.Now()
 	s.mu.Unlock()
 
+	parent := ctx
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Minute)
 	defer cancel()
 
@@ -149,6 +167,7 @@ func (s *Server) refresh(ctx context.Context) {
 	s.applyResults(name, matches, standings)
 	s.fetchSheets(ctx, matches)
 	s.resolvePlayers(ctx)
+	s.refreshTournaments(parent) // has its own time budget
 }
 
 func (s *Server) applyResults(name string, matches []fitet.Match, standings []fitet.Standing) {
@@ -309,6 +328,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /team/{id}", s.handleTeam)
 	mux.HandleFunc("GET /player/find", s.handlePlayerFind)
 	mux.HandleFunc("GET /player/{id}", s.handlePlayer)
+	mux.HandleFunc("GET /tornei", s.handleTournaments)
+	mux.HandleFunc("GET /tornei/{id}", s.handleTournament)
 	mux.HandleFunc("GET /api/data", s.handleData)
 	mux.HandleFunc("GET /api/status", s.handleStatus)
 	mux.HandleFunc("POST /api/refresh", s.handleRefresh)

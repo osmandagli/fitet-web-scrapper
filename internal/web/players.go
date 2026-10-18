@@ -184,6 +184,10 @@ func (s *Server) playerByName(name string) *playerInfo {
 	if p := s.players[name]; p != nil && !p.Missing {
 		return p
 	}
+	name = nameKey(name) // tournament draws write names in title case
+	if p := s.players[name]; p != nil && !p.Missing {
+		return p
+	}
 	var found *playerInfo
 	for full, p := range s.players {
 		if !p.Missing && abbreviate(full) == name {

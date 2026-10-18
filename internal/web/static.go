@@ -15,7 +15,7 @@ import (
 // Build scrapes the portal once and writes the whole site as static files to
 // dir, for hosting without a running server (e.g. Cloudflare Pages):
 //
-//	index.html, team/<id>.html, player/<id>.html      (Italian)
+//	index.html, team/<id>.html, player/<id>.html, tornei.html, tornei/<id>.html   (Italian)
 //	en/index.html, en/team/<id>.html, ...            (English)
 //
 // Pages are written as "<name>.html" so that /team/39067 resolves on hosts
@@ -44,6 +44,13 @@ func (s *Server) Build(ctx context.Context, dir string) error {
 			teams = append(teams, tv)
 		}
 	}
+	tv := s.buildTournamentsView()
+	var tps []tournamentPage
+	for id := range s.tournaments {
+		if p, ok := s.buildTournamentPage(id); ok {
+			tps = append(tps, p)
+		}
+	}
 	var players []playerView
 	for id, p := range s.pages {
 		players = append(players, s.buildPlayerView(id, p))
@@ -61,13 +68,23 @@ func (s *Server) Build(ctx context.Context, dir string) error {
 				return err
 			}
 		}
+		if s.Committee != 0 {
+			if err := s.writePage(l, filepath.Join(root, "tornei.html"), "tournaments.html", tv); err != nil {
+				return err
+			}
+			for _, p := range tps {
+				if err := s.writePage(l, filepath.Join(root, "tornei", fmt.Sprintf("%d.html", p.Card.ID)), "tournament.html", p); err != nil {
+					return err
+				}
+			}
+		}
 		for _, pv := range players {
 			if err := s.writePage(l, filepath.Join(root, "player", fmt.Sprintf("%d.html", pv.ID)), "player.html", pv); err != nil {
 				return err
 			}
 		}
 	}
-	log.Printf("wrote %s in %d languages: index, %d team page(s), %d player page(s)", dir, len(langs), len(teams), len(players))
+	log.Printf("wrote %s in %d languages: index, %d team page(s), %d player page(s), %d tournament(s)", dir, len(langs), len(teams), len(players), len(tps))
 	return nil
 }
 

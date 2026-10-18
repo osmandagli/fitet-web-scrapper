@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="{{lang}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.Card.Name}} · {{t "Tournaments"}}</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏓</text></svg>">
+{{template "style"}}
+</head>
+<body>
+<main>
+  {{template "langswitch" (printf "/tornei/%d" .Card.ID)}}
+  <a class="back" href="{{home}}tornei">← {{t "Tournaments"}}</a>
+  <header style="margin-top:6px">
+    <div>
+      <div class="eyebrow">{{day .Card.Date}} · {{.Card.Place}}</div>
+      <h1>{{.Card.Name}}</h1>
+      <div class="sub" style="margin-top:4px">{{template "kinds" .Card.Kinds}} · {{if .Card.Played}}{{tf "%d events" .Card.Events}}{{else}}{{tf "%d events · %d entries" .Card.Events .Card.Entries}}{{end}}</div>
+    </div>
+    <div class="status">
+      <a href="{{.Card.FITETURL}}" target="_blank" rel="noopener"><button type="button">{{t "On FITET ↗"}}</button></a>
+    </div>
+  </header>
+
+  {{with .Card.Ours}}
+  <section>
+    <h2>{{if $.Card.Played}}{{t "Your group in this tournament"}}{{else}}{{t "Entered from your group"}}{{end}} <span class="hint">{{t "★ = your team"}}</span></h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>{{t "Player"}}</th><th>{{t "Team"}}</th><th>{{t "Event"}}</th><th>{{if $.Card.Played}}{{t "Result"}}{{end}}</th></tr></thead>
+        <tbody>
+        {{range .}}<tr{{if .Mine}} class="mine"{{end}}><td class="team">{{template "tp" .Name}}{{template "pts" .Name}}</td><td>{{with .Team}}{{template "team" .}}{{end}}</td><td class="sub">{{.Event}}</td><td>{{if $.Card.Played}}{{template "placing" .}}{{end}}</td></tr>{{end}}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {{end}}
+
+  {{if gt (len .Events) 1}}
+  <nav class="evnav" aria-label="{{t "Events"}}">{{range .Events}}<a href="#{{.Anchor}}">{{.Name}}</a>{{end}}</nav>
+  {{end}}
+
+  <div class="search">
+    <input id="q" type="search" placeholder="{{t "Find a player…"}}" autocomplete="off" aria-label="{{t "Find a player…"}}">
+    <span class="sub" id="qn"></span>
+  </div>
+
+  {{range .Events}}
+  <section class="event" id="{{.Anchor}}">
+    <h2>{{.Name}}</h2>
+
+    {{if .Winner}}
+    <div class="podium">
+      <div class="card"><h3>{{t "Winner"}}</h3><div class="who"><span class="medal">🥇</span>{{template "tp" .Winner}}</div></div>
+      {{with .Finalist}}<div class="card"><h3>{{t "Finalist"}}</h3><div class="who"><span class="medal">🥈</span>{{template "tp" .}}</div></div>{{end}}
+      {{with .Semis}}<div class="card"><h3>{{t "Semi-finals"}}</h3>{{range .}}<div class="who"><span class="medal">🥉</span>{{template "tp" .}}</div>{{end}}</div>{{end}}
+    </div>
+    {{end}}
+
+    {{with .Final}}
+    <div class="bracket-wrap">
+      <div class="bracket">
+        {{range .}}
+        <div class="bcol">
+          <h4>{{round .Name}}</h4>
+          {{range .Matches}}{{template "bmatch" .}}{{end}}
+        </div>
+        {{end}}
+      </div>
+    </div>
+    {{end}}
+
+    {{if gt (len .Rounds) 3}}
+    <details class="block">
+      <summary>{{t "Full draw"}} <span class="hint">{{tf "%d rounds" (len .Rounds)}}</span></summary>
+      {{range .Rounds}}
+      <div class="kround">
+        <h4>{{round .Name}}</h4>
+        {{range .Matches}}{{if or .A .B}}
+        <div class="krow">
+          <span class="r{{if and .Winner (eq .Winner .A)}} w{{end}}">{{if .A}}{{template "tp" .A}}{{else}}<span class="bye">{{t "bye"}}</span>{{end}}</span>
+          <span class="sub">{{with .WonBy}}{{.}}{{else}}–{{end}}</span>
+          <span class="{{if and .Winner (eq .Winner .B)}}w{{end}}">{{if .B}}{{template "tp" .B}}{{else}}<span class="bye">{{t "bye"}}</span>{{end}}</span>
+          {{with .Sets}}<span class="s">{{range $i, $s := .}}{{if $i}} · {{end}}{{$s}}{{end}}</span>{{end}}
+        </div>
+        {{end}}{{end}}
+      </div>
+      {{end}}
+    </details>
+    {{end}}
+
+    {{with .Groups}}
+    <details class="block"{{if not $.Card.Played}} open{{end}}>
+      <summary>{{t "Groups"}} <span class="hint">{{tf "%d groups" (len .)}}</span></summary>
+      <div class="groups">
+        {{range .}}
+        <div class="grp-card">
+          <h4>{{tf "Group %d" .No}}</h4>
+          <table>
+            <tbody>{{range .Standings}}<tr><td class="n">{{.Pos}}</td><td>{{template "tp" .Name}}</td><td class="n sub">{{.Won}}–{{.Lost}}</td><td class="n"><b>{{.Points}}</b></td></tr>{{end}}</tbody>
+          </table>
+          {{range .Matches}}<div class="gm">{{.A}} – {{.B}} <b>{{.SetsA}}-{{.SetsB}}</b> · {{range $i, $s := .Sets}}{{if $i}}, {{end}}{{$s}}{{end}}</div>{{end}}
+        </div>
+        {{end}}
+      </div>
+    </details>
+    {{end}}
+
+    {{with .Entries}}
+    <details class="block"{{if eq (len $.Events) 1}} open{{end}}>
+      <summary>{{t "Entries"}} <span class="hint">{{tf "%d players, by ranking points" (len .)}}</span></summary>
+      <div style="padding:0 14px 12px">
+        <table class="entries">
+          <thead><tr><th class="n">#</th><th>{{t "Player"}}</th><th class="n">{{t "Points"}}</th><th>{{t "Club"}}</th></tr></thead>
+          <tbody>{{range $i, $e := .}}<tr><td class="n sub">{{inc $i}}</td><td class="team">{{template "tp" $e.Name}}</td><td class="n">{{$e.Points}}</td><td class="sub">{{$e.Club}}</td></tr>{{end}}</tbody>
+        </table>
+      </div>
+    </details>
+    {{end}}
+
+    {{if and (not .Winner) (not .Final) (not .Groups) (not .Entries)}}<p class="sub">{{t "No draw published for this event."}}</p>{{end}}
+  </section>
+  {{end}}
+
+  <footer>{{t "Data from"}} <a href="https://portale.fitet.org" target="_blank" rel="noopener">portale.fitet.org</a> · {{t "tournament results and entry lists"}}</footer>
+</main>
+<script>
+(() => {
+  const q = document.getElementById("q"), qn = document.getElementById("qn");
+  const names = [...document.querySelectorAll(".tp")];
+  const fmt = {{t "%d matches"}};
+  q.addEventListener("input", () => {
+    const v = q.value.trim().toUpperCase();
+    let first = null, n = 0;
+    for (const el of names) {
+      const hit = v.length >= 3 && el.dataset.p.includes(v);
+      el.classList.toggle("hit", hit);
+      if (hit) {
+        n++;
+        for (let d = el.closest("details"); d; d = d.parentElement.closest("details")) d.open = true;
+        first = first || el;
+      }
+    }
+    qn.textContent = v.length >= 3 ? fmt.replace("%d", n) : "";
+    if (first) first.scrollIntoView({block: "center", behavior: "smooth"});
+  });
+})();
+</script>
+</body>
+</html>
+
+{{define "bmatch"}}
+<div class="bm">
+  <div class="pl{{if and .Winner (eq .Winner .A)}} w{{end}}"><span>{{if .A}}{{template "tp" .A}}{{else}}<span class="bye">{{t "bye"}}</span>{{end}}</span>{{if and .Winner (eq .Winner .A) .WonBy}}<span class="sc">{{.WonBy}}</span>{{end}}</div>
+  <div class="pl{{if and .Winner (eq .Winner .B)}} w{{end}}"><span>{{if .B}}{{template "tp" .B}}{{else}}<span class="bye">{{t "bye"}}</span>{{end}}</span>{{if and .Winner (eq .Winner .B) .WonBy}}<span class="sc">{{.WonBy}}</span>{{end}}</div>
+  {{with .Sets}}<div class="sets">{{range $i, $s := .}}{{if $i}} · {{end}}{{$s}}{{end}}</div>{{end}}
+</div>
+{{end}}
+

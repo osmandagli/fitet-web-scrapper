@@ -28,6 +28,7 @@ func main() {
 		anno   = flag.Int("anno", 41, "season id (ANNO); 41 = 2026/27")
 		team   = flag.String("team", "BONACOSSA - 2", "highlight teams containing this text")
 		player = flag.String("player", "DAGLI OSMAN", "highlight this player in lineups")
+		comit  = flag.Int("comit", 4, "regional committee whose tournaments to show (COMIT); 4 = Lombardia, 0 = none")
 		cache  = flag.String("cache", "", "cache directory for score sheets and players (default: ~/.config/fitet-web-scrapper/<cam>-<anno>)")
 		every  = flag.Duration("every", 6*time.Hour, "how often to re-check the FITET portal")
 	)
@@ -51,6 +52,8 @@ func main() {
 		Player:   *player,
 		Every:    *every,
 		CacheDir: *cache,
+
+		Committee: *comit,
 	})
 	go srv.Run(ctx)
 

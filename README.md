@@ -36,6 +36,10 @@ Group players are matched to FITET ids through the ranking search and cached in
 `<cache>/players.json` (rankings refreshed daily); other names go through
 `/player/find?name=…`, which redirects on a single match or lists homonyms.
 
+- `/tornei` lists the season's Lombardy tournaments (`-comit 4`; `0` turns them off):
+  upcoming ones with entry lists, played ones with podium, bracket, groups and how far
+  each player of the group got (★ = your team). A finished tournament is downloaded
+  once and kept in `<cache>/tournaments.json`; entry lists are re-checked every 6 h.
 - Pages are in Italian; the English version is under `/en/` (IT/EN switch at the top). Texts live in `internal/web/lang.go`
 - `-addr 0.0.0.0:8080` to open it from your phone on the same Wi-Fi
 - `-player "DAGLI OSMAN"` highlights you in lineups

@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="{{lang}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{t "Tournaments"}} · FITET Lombardia</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏓</text></svg>">
+{{template "style"}}
+</head>
+<body>
+<main>
+  {{template "langswitch" "/tornei"}}
+  {{template "tabs" "tournaments"}}
+  <header>
+    <div>
+      <div class="eyebrow">FITET Lombardia</div>
+      <h1>{{t "Regional tournaments"}}</h1>
+      <div class="sub">{{t "Results and entries of the season's tournaments in Lombardy. ★ = your team, bold = players of your group."}}</div>
+    </div>
+    <div class="status">
+      <span class="dot{{if .Error}} err{{end}}" id="dot"></span>
+      <span id="checked" data-at="{{if not .CheckedAt.IsZero}}{{iso .CheckedAt}}{{end}}">{{if static}}{{t "Updated"}}{{else}}{{t "Checked"}}{{end}} {{date .CheckedAt}}</span>
+      {{if not static}}<button id="refresh" type="button">{{t "Refresh now"}}</button>{{end}}
+    </div>
+  </header>
+
+  {{if .Upcoming}}
+  <section>
+    <h2>{{t "Upcoming tournaments"}}</h2>
+    <div class="tcards">
+      {{range .Upcoming}}
+      <article class="tcard">
+        <div class="tdate">{{day .Date}}</div>
+        <a class="tname" href="{{home}}tornei/{{.ID}}">{{.Name}}</a>
+        <div class="sub">{{.Place}} · {{template "kinds" .Kinds}}</div>
+        <div class="sub">{{tf "%d events · %d entries" .Events .Entries}}</div>
+        {{if .Ours}}
+        <div>
+          <div class="sub" style="margin-bottom:4px">{{t "Entered from your group:"}}</div>
+          <div class="chips">{{range .Ours}}<span class="chip{{if .Mine}} mine{{end}}"><b>{{template "tp" .Name}}</b>{{with .Team}} · {{.}}{{end}}</span>{{end}}</div>
+        </div>
+        {{end}}
+        <a class="more" href="{{home}}tornei/{{.ID}}">{{t "Entry lists"}} ›</a>
+      </article>
+      {{end}}
+    </div>
+  </section>
+  {{end}}
+
+  <section>
+    <h2>{{t "Results"}}</h2>
+    {{if .Played}}
+    <div class="tcards">
+      {{range .Played}}
+      <article class="tcard">
+        <div class="tdate">{{day .Date}}</div>
+        <a class="tname" href="{{home}}tornei/{{.ID}}">{{.Name}}</a>
+        <div class="sub">{{.Place}} · {{template "kinds" .Kinds}}</div>
+        {{if .Winners}}
+        <div class="wins">
+          {{range .Winners}}<span class="ev" title="{{.Event}}">{{.Event}}</span><span>🥇 {{template "tp" .Winner}}</span>{{end}}
+        </div>
+        {{with .More}}<div class="sub">{{tf "+ %d more events" .}}</div>{{end}}
+        {{end}}
+        {{if .Ours}}
+        <div>
+          <div class="sub" style="margin-bottom:4px">{{t "Your group:"}}</div>
+          <div class="chips">{{range .Ours}}<span class="chip{{if .Mine}} mine{{end}}" title="{{.Event}}"><b>{{template "tp" .Name}}</b> {{template "placing" .}}</span>{{end}}</div>
+        </div>
+        {{end}}
+        <a class="more" href="{{home}}tornei/{{.ID}}">{{t "Draws and groups"}} ›</a>
+      </article>
+      {{end}}
+    </div>
+    {{else}}
+    <p class="sub">{{t "No tournament results yet this season."}}</p>
+    {{end}}
+  </section>
+
+  <footer>{{t "Data from"}} <a href="https://portale.fitet.org" target="_blank" rel="noopener">portale.fitet.org</a> · {{if static}}{{tf "updated %s" (date .CheckedAt)}}{{else}}{{tf "checked every %s" (every .Every)}}{{end}}</footer>
+</main>
+{{template "live" .}}
+</body>
+</html>
+

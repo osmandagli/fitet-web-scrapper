@@ -82,6 +82,15 @@ func (s *Server) langFuncs(lang string) template.FuncMap {
 			}
 			return path
 		},
+		"day":   func(t time.Time) string { return formatDay(lang, t) },
+		"round": func(code string) string { return roundName(lang, code, false) },
+		"out":   func(code string) string { return roundName(lang, code, true) },
+		"tournamentURL": func(date string) string {
+			if u := s.tournamentURL(date); u != "" {
+				return prefix + u
+			}
+			return ""
+		},
 		"teamURL": func(team string) string {
 			if u := s.teamURL(team); u != "" {
 				return prefix + u
@@ -115,6 +124,14 @@ func formatDate(lang string, t time.Time, full bool) string {
 		return fmt.Sprintf("%s %s · %s", itDays[t.Weekday()], day, t.Format("15:04"))
 	}
 	return day
+}
+
+// formatDay gives "Sat 29 Aug 2026" / "sab 29 ago 2026".
+func formatDay(lang string, t time.Time) string {
+	if lang != langIT {
+		return t.Format("Mon 2 Jan 2006")
+	}
+	return fmt.Sprintf("%s %d %s %d", itDays[t.Weekday()], t.Day(), itMonths[t.Month()-1], t.Year())
 }
 
 // localPoints writes ranking points in the page's convention: 6,219.81 / 6.219,81.
@@ -167,6 +184,36 @@ func stageName(lang, code string) string {
 		return "Turno " + n
 	}
 	return code
+}
+
+// roundName names a knockout round (stageCode) as a heading ("Quarter-finals")
+// or as where a player went out ("Quarter-final").
+func roundName(lang, code string, out bool) string {
+	type names struct{ en, enOut, it, itOut string }
+	var n names
+	switch code {
+	case "F":
+		n = names{"Final", "Finalist", "Finale", "Finalista"}
+	case "SF":
+		n = names{"Semi-finals", "Semi-final", "Semifinali", "Semifinale"}
+	case "QF":
+		n = names{"Quarter-finals", "Quarter-final", "Quarti di finale", "Quarti"}
+	case "OF":
+		n = names{"Last 16", "Last 16", "Ottavi di finale", "Ottavi"}
+	case "16":
+		n = names{"Last 32", "Last 32", "Sedicesimi di finale", "Sedicesimi"}
+	default:
+		n = names{"Last " + code, "Last " + code, "Turno a " + code, "Turno a " + code}
+	}
+	switch {
+	case lang == langIT && out:
+		return n.itOut
+	case lang == langIT:
+		return n.it
+	case out:
+		return n.enOut
+	}
+	return n.en
 }
 
 // roundNumber reads codes like "3T" (round 3 of the draw).
@@ -308,4 +355,55 @@ var italian = map[string]string{
 	"Card": "Tessera",
 	"No athlete called “%s” was found in the FITET ranking.": "Nessun atleta di nome “%s” trovato nella classifica FITET.",
 	"English": "English",
+
+	// tournaments
+	"Open":                 "Open",
+	"Upcoming tournaments": "Prossimi tornei",
+	"+ %d more events":     "+ altre %d gare",
+	"Championship":         "Campionato",
+	"Regional tournaments": "Tornei regionali",
+	"Results and entries of the season's tournaments in Lombardy. ★ = your team, bold = players of your group.": "Risultati e iscritti dei tornei della stagione in Lombardia. ★ = la tua squadra, in grassetto = giocatori del tuo girone.",
+	"%d events · %d entries":                 "%d gare · %d iscrizioni",
+	"%d events":                              "%d gare",
+	"Entered from your group:":               "Iscritti dal tuo girone:",
+	"Entered from your group":                "Iscritti dal tuo girone",
+	"Entry lists":                            "Liste iscritti",
+	"Your group:":                            "Il tuo girone:",
+	"Draws and groups":                       "Tabelloni e gironi",
+	"No tournament results yet this season.": "Ancora nessun risultato dei tornei in questa stagione.",
+	"Next tournament":                        "Prossimo torneo",
+	"%d from your group entered":             "%d iscritti dal tuo girone",
+	"Your group in this tournament":          "Il tuo girone in questo torneo",
+	"★ = your team":                          "★ = la tua squadra",
+	"Event":                                  "Gara",
+	"Events":                                 "Gare",
+	"Result":                                 "Risultato",
+	"Find a player…":                         "Cerca un giocatore…",
+	"%d matches":                             "%d risultati",
+	"Winner":                                 "Vincitore",
+	"Finalist":                               "Finalista",
+	"Semi-finals":                            "Semifinali",
+	"Full draw":                              "Tabellone completo",
+	"%d rounds":                              "%d turni",
+	"bye":                                    "bye",
+	"Groups":                                 "Gironi",
+	"%d groups":                              "%d gironi",
+	"Group %d":                               "Girone %d",
+	"Group %d · %s":                          "Girone %d · %s",
+	"Entries":                                "Iscritti",
+	"%d players, by ranking points":          "%d giocatori, per punti in classifica",
+	"Club":                                   "Società",
+	"No draw published for this event.":      "Nessun tabellone pubblicato per questa gara.",
+	"tournament results and entry lists":     "risultati dei tornei e liste iscritti",
+	"Entered":                                "Iscritto",
+	"still in":                               "in gara",
+	"Category":                               "Categoria",
+	"Youth":                                  "Giovanili",
+	"Ordinary":                               "Ordinari",
+	"Veterans":                               "Master",
+	"Promotional":                            "Promozionali",
+	"Para":                                   "Paralimpici",
+	"Regional championships":                 "Campionati regionali",
+	"Provincial":                             "Provinciali",
+	"Women's day":                            "Giornata rosa",
 }

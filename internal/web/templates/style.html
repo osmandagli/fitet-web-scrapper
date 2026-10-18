@@ -98,6 +98,81 @@
   .langs a, .langs span { padding: 2px 6px; border-radius: 6px; text-decoration: none; color: var(--muted); }
   .langs span { color: var(--text); background: var(--surface); border: 1px solid var(--line); }
   .langs a:hover { color: var(--accent); }
+
+  /* section tabs */
+  .tabs { display: flex; gap: 4px; margin: 0 0 14px; font-size: 14px; font-weight: 600; }
+  .tabs a { padding: 6px 12px; border-radius: 99px; color: var(--muted); text-decoration: none; border: 1px solid transparent; }
+  .tabs a:hover { color: var(--accent); }
+  .tabs a.on { color: var(--text); background: var(--surface); border-color: var(--line); }
+
+  /* tournaments */
+  .kinds { display: inline-flex; gap: 4px; flex-wrap: wrap; vertical-align: middle; }
+  .kind { font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 99px; background: var(--accent-soft); color: var(--accent); letter-spacing: .03em; }
+  .tcards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); gap: 12px; }
+  .tcard { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+  .tcard a.tname { color: inherit; text-decoration: none; }
+  .tcard a.tname:hover { color: var(--accent); }
+  .tcard .tdate { font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+  .tcard .tname { font-weight: 700; font-size: 16px; line-height: 1.25; }
+  .tcard .more { margin-top: auto; color: var(--accent); font-size: 13px; font-weight: 600; text-decoration: none; }
+  .wins { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 3px 10px; font-size: 13px; }
+  .wins .ev { color: var(--muted); padding: 0; background: none; border: 0; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { font-size: 12px; border: 1px solid var(--line); border-radius: 99px; padding: 2px 9px; background: var(--surface-2); }
+  .chip.mine { background: var(--mine); border-color: var(--mine-line); }
+  .chip b { font-weight: 650; }
+  .badge { font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 99px; background: var(--surface-2); border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+  .badge.W { background: #f2c94c; border-color: #d4a514; color: #4a3800; }
+  .badge.F, .badge.SF { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  .badge.live { background: var(--win); border-color: var(--win); color: #fff; }
+  .tp.me { background: var(--mine); border-radius: 4px; padding: 0 3px; box-shadow: inset 0 -2px 0 var(--mine-line); }
+  .tp.mate, .tp.grp { font-weight: 650; }
+  .tp.mate::after { content: "★"; color: var(--mine-line); font-size: 10px; margin-left: 2px; vertical-align: super; }
+  .tp.hit { background: var(--accent); color: #fff; border-radius: 4px; padding: 0 3px; }
+  .tp.hit a { color: #fff; border-bottom-color: #fff; }
+
+  .evnav { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+  .evnav a { font-size: 12px; text-decoration: none; color: var(--text); border: 1px solid var(--line); background: var(--surface); border-radius: 99px; padding: 4px 10px; }
+  .evnav a:hover { border-color: var(--accent); }
+  .search { display: flex; gap: 8px; align-items: center; margin-bottom: 18px; }
+  .search input { font: inherit; font-size: 14px; flex: 1; max-width: 340px; padding: 7px 11px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--text); }
+  .search input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .event { scroll-margin-top: 12px; }
+  .event > h2 { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; }
+  .podium { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr)); gap: 10px; margin-bottom: 14px; }
+  .podium .card { padding: 10px 14px; }
+  .podium .medal { font-size: 22px; line-height: 1; margin-right: 6px; vertical-align: -3px; }
+  .podium .who { font-weight: 700; font-size: 15px; }
+
+  .bracket-wrap { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow-x: auto; margin-bottom: 10px; }
+  .bracket { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(200px, 1fr); gap: 0 18px; padding: 12px 14px; min-width: min-content; }
+  .bcol { display: flex; flex-direction: column; justify-content: space-around; gap: 10px; }
+  .bcol h4 { margin: 0 0 2px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .bm { border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); font-size: 13px; overflow: hidden; }
+  .bm .pl { display: flex; justify-content: space-between; gap: 8px; padding: 4px 8px; }
+  .bm .pl + .pl { border-top: 1px solid var(--line); }
+  .bm .pl.w { font-weight: 700; }
+  .bm .pl.w .sc { color: var(--win); }
+  .bm .sets { padding: 2px 8px 4px; font-size: 11px; color: var(--muted); border-top: 1px dashed var(--line); font-variant-numeric: tabular-nums; }
+  .bm .sc { font-variant-numeric: tabular-nums; color: var(--muted); }
+  .bye { color: var(--muted); font-style: italic; font-weight: 400; }
+
+  details.block { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); margin-bottom: 10px; }
+  details.block > summary { cursor: pointer; padding: 10px 14px; font-weight: 600; font-size: 14px; }
+  details.block > summary .hint { font-weight: 500; }
+  .kround { padding: 0 14px 10px; }
+  .kround h4 { margin: 8px 0 4px; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  .krow { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 8px; align-items: baseline; padding: 4px 0; border-top: 1px solid var(--line); font-size: 13px; }
+  .krow .r { text-align: right; }
+  .krow .w { font-weight: 700; }
+  .krow .s { color: var(--muted); font-size: 11px; grid-column: 1 / -1; text-align: center; margin-top: -3px; font-variant-numeric: tabular-nums; }
+  .groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); gap: 10px; padding: 0 14px 14px; }
+  .grp-card { border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); font-size: 13px; overflow: hidden; }
+  .grp-card h4 { margin: 0; padding: 6px 10px; font-size: 12px; border-bottom: 1px solid var(--line); }
+  .grp-card table td { padding: 4px 8px; }
+  .grp-card .gm { padding: 4px 10px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+  .grp-card .gm b { color: var(--text); font-variant-numeric: tabular-nums; }
+  .entries td.n { width: 1%; }
   .back:hover { color: var(--accent); }
 
   /* team page */
@@ -182,6 +257,19 @@
 
 {{/* IT | EN switch; the argument is this page's path without the language prefix. */}}
 {{define "langswitch"}}<nav class="langs" aria-label="Lingua / Language">{{if eq lang "it"}}<span lang="it">IT</span><a href="{{alt .}}" lang="en" hreflang="en">EN</a>{{else}}<a href="{{alt .}}" lang="it" hreflang="it">IT</a><span lang="en">EN</span>{{end}}</nav>{{end}}
+
+{{/* Tournament list tags (Open, Categoria…). */}}
+{{define "kinds"}}<span class="kinds">{{range .}}<span class="kind">{{t (kind .)}}</span>{{end}}</span>{{end}}
+
+{{/* Championship / tournaments tabs; the argument is the active one. */}}
+{{define "tabs"}}<nav class="tabs"><a href="{{home}}"{{if eq . "group"}} class="on"{{end}}>{{t "Championship"}}</a><a href="{{home}}tornei"{{if eq . "tournaments"}} class="on"{{end}}>{{t "Tournaments"}}</a></nav>{{end}}
+
+{{/* A name in a tournament: group players and teammates stand out, and the
+     page search finds it by data-p. */}}
+{{define "tp"}}<span class="tp {{who .}}" data-p="{{key .}}">{{with playerURL .}}<a class="tl" href="{{.}}">{{$}}</a>{{else}}{{.}}{{end}}</span>{{end}}
+
+{{/* How far a group player got in a tournament event. */}}
+{{define "placing"}}<span class="badge {{.Stage}}{{if .Live}} live{{end}}">{{if eq .Stage "W"}}{{t "🏆 Winner"}}{{else if eq .Stage "E"}}{{t "Entered"}}{{else if eq .Stage "G"}}{{tf "Group %d · %s" .Group (ordinal .Pos)}}{{else}}{{out .Stage}}{{end}}{{if .Live}} · {{t "still in"}}{{end}}</span>{{end}}
 
 {{/* A team name that links to its page when we know the team. */}}
 {{define "team"}}{{with teamURL .}}<a class="tl" href="{{.}}">{{$}}</a>{{else}}{{.}}{{end}}{{end}}

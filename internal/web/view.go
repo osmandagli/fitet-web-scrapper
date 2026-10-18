@@ -25,6 +25,8 @@ type view struct {
 	MyPlayed  int
 	MyTotal   int
 	Rounds    []roundView
+
+	NextTournament *tournamentCard // nil without tournaments
 }
 
 type matchView struct {
@@ -161,7 +163,7 @@ func sheetFor(sh *fitet.Sheet, team string, atHome bool) *sheetView {
 }
 
 func (s *Server) buildView(now time.Time) view {
-	v := view{Snapshot: s.snap, Team: s.Team, Every: s.Every}
+	v := view{Snapshot: s.snap, Team: s.Team, Every: s.Every, NextTournament: s.nextTournament()}
 
 	for i := range s.snap.Standings {
 		if s.isMine(s.snap.Standings[i].Team) {

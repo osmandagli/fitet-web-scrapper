@@ -10,6 +10,7 @@
 <body>
 <main>
   {{template "langswitch" "/"}}
+  {{if tournaments}}{{template "tabs" "group"}}{{end}}
   <header>
     <div>
       <div class="eyebrow">FITET Lombardia</div>
@@ -48,6 +49,14 @@
       <div class="form">{{range .Form}}<span class="pill {{.Result}}" title="{{tf "R%d" .Round}} {{.Score}} vs {{.Opponent}}">{{.Result}}</span>{{end}}</div>
       <div class="sub" style="margin-top:6px">{{t "V = win · P = loss · N = draw"}}</div>
     </div>
+    {{end}}
+    {{with .NextTournament}}
+    <a class="card link" href="{{home}}tornei/{{.ID}}">
+      <h3>{{t "Next tournament"}} ›</h3>
+      <div class="big" style="font-size:18px;line-height:1.25">{{.Name}}</div>
+      <div class="sub">{{day .Date}} · {{.Place}}</div>
+      {{with .Ours}}<div class="sub">{{tf "%d from your group entered" (len .)}}</div>{{end}}
+    </a>
     {{end}}
     {{if .MyRow}}
     <div class="card">

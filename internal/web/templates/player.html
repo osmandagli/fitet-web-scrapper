@@ -156,7 +156,7 @@
     {{range .Tournaments}}{{$multi := gt (len .Events) 1}}
     <article class="tm">
       <div class="tm-head">
-        <span class="opp">{{.Title}}</span>
+        <span class="opp">{{$tt := .}}{{with tournamentURL .Date}}<a class="tl" href="{{.}}">{{$tt.Title}}</a>{{else}}{{.Title}}{{end}}</span>
         <span class="res"><span class="fs" style="font-size:15px">{{.Won}}–{{.Lost}}</span></span>
       </div>
       {{range .Events}}

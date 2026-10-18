@@ -42,6 +42,23 @@ func fakePortal(t *testing.T) *httptest.Server {
 			file, ok = "../fitet/testdata/ranking_"+id+".html", true
 		case "/incontri_atleta_acc.php":
 			file, ok = "../fitet/testdata/atleta_"+id+".html", true
+		case "/tornei/elenco_tornei.php":
+			file, ok = "../fitet/testdata/tornei_elenco_"+r.URL.Query().Get("TOR")+".html", true
+			if _, err := os.Stat(file); err != nil {
+				file = "../fitet/testdata/tornei_elenco_vuoto.html"
+			}
+		case "/tornei/elenco_gare.php":
+			file, ok = "../fitet/testdata/tornei_gare_"+r.URL.Query().Get("IDT")+".html", true
+		case "/tornei/iscrizioni.php":
+			file, ok = "../fitet/testdata/tornei_iscrizioni_"+r.URL.Query().Get("IDT")+".html", true
+		case "/tornei/iscrizioni_gara.php":
+			file, ok = "../fitet/testdata/tornei_iscrizioni_gara_"+r.URL.Query().Get("GARA")+".html", true
+		case "/tornei/tabelloni/1_4_home.html":
+			file, ok = "../fitet/testdata/tornei_tabelloni_1_4_home.html", true
+		case "/tornei/tabelloni/1_4_home-SXO52-0002.html":
+			file, ok = "../fitet/testdata/tornei_gironi_open3.html", true
+		case "/tornei/tabelloni/1_4_home-SXO52-0003.html":
+			file, ok = "../fitet/testdata/tornei_tabellone_open3.html", true
 		}
 		if ok {
 			if _, err := os.Stat(file); err != nil {
@@ -408,6 +425,9 @@ func TestItalianCoversTemplates(t *testing.T) {
 		"Foreign", "men's ranking", "women's ranking", "national ranking"} {
 		keys[k] = true
 	}
+	for _, kind := range fitet.TournamentKinds {
+		keys[kindName(kind)] = true
+	}
 	if len(keys) < 50 {
 		t.Fatalf("found only %d texts; is the pattern still right?", len(keys))
 	}
@@ -415,5 +435,100 @@ func TestItalianCoversTemplates(t *testing.T) {
 		if _, ok := italian[k]; !ok {
 			t.Errorf("no Italian for %q", k)
 		}
+	}
+}
+
+func TestTournaments(t *testing.T) {
+	portal := fakePortal(t)
+	defer portal.Close()
+
+	client := fitet.NewClient()
+	client.BaseURL = portal.URL
+	cache := t.TempDir()
+	opt := Options{Group: fitet.Group{CAM: 408, ANNO: 41}, Team: "BONACOSSA - 2", Player: "DAGLI OSMAN",
+		Every: 6 * time.Hour, CacheDir: cache, Committee: 4}
+	s := NewServer(client, opt)
+	s.refresh(context.Background())
+
+	// Saronno (Open), Nerviano, Villa Guardia, Coccaglio (Categoria + Giovanili), Milano,
+	// Montichiari, Borgo San Giacomo, Vedano Olona: 8, the fixtures only fill in two.
+	if len(s.tournaments) != 8 {
+		t.Fatalf("got %d tournaments", len(s.tournaments))
+	}
+	if k := s.tournaments[6].Kinds; len(k) != 2 {
+		t.Errorf("Coccaglio is both Categoria and Giovanili: %v", k)
+	}
+	saronno := s.tournaments[1]
+	if saronno.Name != "Torneo Open memorial 'Christian Noviello'" || len(saronno.Events) != 4 {
+		t.Fatalf("Saronno: %+v", saronno)
+	}
+
+	app := httptest.NewServer(s.Handler())
+	defer app.Close()
+	get := func(path string) string {
+		resp, err := http.Get(app.URL + path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != 200 {
+			t.Fatalf("GET %s: %s", path, resp.Status)
+		}
+		b, _ := io.ReadAll(resp.Body)
+		return string(b)
+	}
+
+	html := get("/tornei")
+	for _, want := range []string{
+		"Tornei regionali", "Torneo Open città di Vedano Olona", "Prossimi tornei",
+		`<span class="tp mate" data-p="BARGAGLI PAOLO">`, // teammate entered at Vedano
+		"🥇 <span class=\"tp \" data-p=\"GEMMA IVAN\">",   // Open3 winner
+		`<span class="tp me" data-p="DAGLI OSMAN BUGRA">`,
+		`<span class="badge 64">Turno a 64</span>`, // how far I got
+	} {
+		if !strings.Contains(html, want) {
+			t.Errorf("tournaments page missing %q", want)
+		}
+	}
+
+	html = get("/tornei/1")
+	for _, want := range []string{
+		"Il tuo girone in questo torneo", "Vincitore", "Finalista", "Semifinali", "Quarti di finale",
+		"Tabellone completo", "Girone 1", "Tregambe Roman", "11-9 · 13-11 · 11-9", // the final
+		`<span class="bye">bye</span>`,
+	} {
+		if !strings.Contains(html, want) {
+			t.Errorf("tournament page missing %q", want)
+		}
+	}
+	html = get("/en/tornei/8")
+	for _, want := range []string{"Entered from your group", "BARGAGLI PAOLO", "S.S. Dilettantistica T.T. Bonacossa Milano S.R.L.", "48 players, by ranking points"} {
+		if !strings.Contains(html, want) {
+			t.Errorf("upcoming tournament page missing %q", want)
+		}
+	}
+	if html = get("/"); !strings.Contains(html, "Prossimo torneo") || !strings.Contains(html, `href="/tornei"`) {
+		t.Error("group page doesn't point to the tournaments")
+	}
+
+	// A static build writes the tournament pages too.
+	out := t.TempDir()
+	s.Static = true
+	if err := s.Build(context.Background(), out); err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range []string{"tornei.html", "tornei/1.html", "tornei/8.html", "en/tornei/1.html"} {
+		if _, err := os.Stat(out + "/" + f); err != nil {
+			t.Errorf("static build: %v", err)
+		}
+	}
+
+	// Results of a finished tournament come from the cache next time.
+	s2 := NewServer(client, opt)
+	if t1 := s2.tournaments[1]; t1 == nil || len(t1.Events) != 4 || t1.Events[1].Bracket == nil {
+		t.Fatalf("tournament cache: %+v", t1)
+	}
+	if needsFetch(s2.tournaments[1], s2.tournaments[1].TournamentRef, time.Now()) {
+		t.Error("a tournament from August shouldn't be fetched again")
 	}
 }
