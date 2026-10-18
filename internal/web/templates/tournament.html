@@ -3,13 +3,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{.Card.Name}} · {{t "Tournaments"}}</title>
+{{$title := printf "%s · %s" .Card.Name (t "Tournaments")}}
+{{$desc := printf "%s · %s · %s" (day .Card.Date) .Card.Place (tf "%d events" .Card.Events)}}
+<title>{{$title}}</title>
+<meta name="description" content="{{$desc}}">
+<meta property="og:title" content="{{$title}}">
+<meta property="og:description" content="{{$desc}}">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏓</text></svg>">
 {{template "style"}}
 </head>
 <body>
 <main>
-  {{template "langswitch" (printf "/tornei/%d" .Card.ID)}}
+  {{template "topbar" (printf "/tornei/%d" .Card.ID)}}
   <a class="back" href="{{home}}tornei">← {{t "Tournaments"}}</a>
   <header style="margin-top:6px">
     <div>
@@ -27,9 +32,9 @@
     <h2>{{if $.Card.Played}}{{t "Your group in this tournament"}}{{else}}{{t "Entered from your group"}}{{end}} <span class="hint">{{t "★ = your team"}}</span></h2>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>{{t "Player"}}</th><th>{{t "Team"}}</th><th>{{t "Event"}}</th><th>{{if $.Card.Played}}{{t "Result"}}{{end}}</th></tr></thead>
+        <thead><tr><th>{{t "Player"}}</th><th>{{t "Team"}}</th><th>{{t "Event"}}</th><th>{{if $.Card.Played}}{{t "Result"}}{{end}}</th>{{if $.Card.Played}}<th class="n" title="{{t "Ranking points the event gave, from the latest ranking publication"}}">{{t "Points"}}</th>{{end}}</tr></thead>
         <tbody>
-        {{range .}}<tr{{if .Mine}} class="mine"{{end}}><td class="team">{{template "tp" .Name}}{{template "pts" .Name}}</td><td>{{with .Team}}{{template "team" .}}{{end}}</td><td class="sub">{{.Event}}</td><td>{{if $.Card.Played}}{{template "placing" .}}{{end}}</td></tr>{{end}}
+        {{range .}}<tr{{if .Mine}} class="mine"{{end}}><td class="team">{{template "tp" .Name}}{{template "pts" .Name}}</td><td>{{with .Team}}{{template "team" .}}{{end}}</td><td class="sub">{{.Event}}</td><td>{{if $.Card.Played}}{{template "placing" .}}{{end}}</td>{{if $.Card.Played}}<td class="n">{{if .Points}}{{template "epts" .Points}}{{else if .Pending}}<span class="pending">{{t "next ranking"}}</span>{{else}}<span class="sub">–</span>{{end}}</td>{{end}}</tr>{{end}}
         </tbody>
       </table>
     </div>

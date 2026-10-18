@@ -84,6 +84,9 @@ func (s *Server) Build(ctx context.Context, dir string) error {
 			}
 		}
 	}
+	if err := os.WriteFile(filepath.Join(dir, "manifest.json"), s.manifestJSON(), 0o644); err != nil {
+		return err
+	}
 	log.Printf("wrote %s in %d languages: index, %d team page(s), %d player page(s), %d tournament(s)", dir, len(langs), len(teams), len(players), len(tps))
 	return nil
 }

@@ -322,6 +322,9 @@ type placing struct {
 	Pos   int    // group position, for "G"
 	Live  bool   // still in the draw
 	rank  int
+
+	Points  *eventPoints // ranking points the event gave them, when published
+	Pending bool         // played after their latest ranking publication
 }
 
 type tournamentCard struct {
@@ -438,7 +441,7 @@ func (s *Server) tournamentCard(t *tournament, teams map[string]string) tourname
 		if w != "" {
 			c.Winners = append(c.Winners, podiumLine{Event: ev.Name, Winner: w, Finalist: f})
 		}
-		c.Ours = append(c.Ours, s.placings(ev, teams)...)
+		c.Ours = append(c.Ours, s.placings(t, ev, teams)...)
 	}
 	sortPlacings(c.Ours)
 	if !t.Played { // entered in several events: name them once
@@ -480,7 +483,7 @@ func podium(ev tournamentEvent) (winner, finalist string, semis []string) {
 }
 
 // placings finds the group players in one event and how far they got.
-func (s *Server) placings(ev tournamentEvent, teams map[string]string) []placing {
+func (s *Server) placings(t *tournament, ev tournamentEvent, teams map[string]string) []placing {
 	var out []placing
 	mine := func(team string) bool { return s.isMine(team) }
 	add := func(p placing) {
@@ -489,6 +492,12 @@ func (s *Server) placings(ev tournamentEvent, teams map[string]string) []placing
 			return
 		}
 		p.Team, p.Mine, p.Event = team, mine(team) || s.isMe(p.Name), ev.Name
+		if p.Stage != "E" {
+			if info := s.playerByName(p.Name); info != nil {
+				p.Points = eventPointsFor(info.Details, t.Name, t.date(), ev.Name)
+				p.Pending = p.Points == nil && pendingRanking(info, t.date())
+			}
+		}
 		out = append(out, p)
 	}
 
@@ -549,8 +558,8 @@ func sortPlacings(ps []placing) {
 	})
 }
 
-func (s *Server) eventPage(i int, ev tournamentEvent, teams map[string]string) eventPage {
-	e := eventPage{Anchor: fmt.Sprintf("e%d", i+1), Name: ev.Name, Groups: ev.Groups, Ours: s.placings(ev, teams)}
+func (s *Server) eventPage(t *tournament, i int, ev tournamentEvent, teams map[string]string) eventPage {
+	e := eventPage{Anchor: fmt.Sprintf("e%d", i+1), Name: ev.Name, Groups: ev.Groups, Ours: s.placings(t, ev, teams)}
 	sortPlacings(e.Ours)
 	e.Winner, e.Finalist, e.Semis = podium(ev)
 	if b := ev.Bracket; b != nil {
@@ -595,7 +604,7 @@ func (s *Server) buildTournamentPage(id int) (tournamentPage, bool) {
 	teams := s.groupTeams()
 	p := tournamentPage{Snapshot: s.snap, Every: s.Every, Card: s.tournamentCard(t, teams)}
 	for i, ev := range t.Events {
-		p.Events = append(p.Events, s.eventPage(i, ev, teams))
+		p.Events = append(p.Events, s.eventPage(t, i, ev, teams))
 	}
 	return p, true
 }
@@ -609,16 +618,46 @@ func (s *Server) nextTournament() *tournamentCard {
 	return &v.Upcoming[0]
 }
 
-// tournamentURL links a player's tournament (dd/mm/yyyy) to its page, if we have it.
-func (s *Server) tournamentURL(date string) string {
+// tournamentURL links a player's tournament (dd/mm/yyyy and title) to its page,
+// if we have it. Matching the name or place avoids linking to the wrong
+// tournament when several are played on the same date.
+func (s *Server) tournamentURL(date, title string) string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
+	bestID, bestScore := 0, 0
+	day := dmy(date)
 	for _, t := range s.tournaments {
-		if t.Played && t.Date == date {
-			return fmt.Sprintf("/tornei/%d", t.ID)
+		// date may be any day of the tournament (the points breakdown dates
+		// each event), t.Date is its first.
+		if !t.Played || day.Before(t.date()) || day.Sub(t.date()) > tournamentDays {
+			continue
+		}
+		score := tournamentMatchScore(t, title)
+		if score > bestScore || (score > 0 && score == bestScore && (bestID == 0 || t.ID < bestID)) {
+			bestID, bestScore = t.ID, score
 		}
 	}
+	if bestID != 0 {
+		return fmt.Sprintf("/tornei/%d", bestID)
+	}
 	return ""
+}
+
+func tournamentMatchScore(t *tournament, title string) int {
+	if title == "" {
+		return 1
+	}
+	score := 0
+	if t.Place != "" {
+		city := strings.TrimSpace(strings.SplitN(t.Place, "(", 2)[0])
+		if containsFold(title, t.Place) || (len(city) >= 3 && containsFold(title, city)) {
+			score = 1
+		}
+	}
+	if t.Name != "" && containsFold(title, t.Name) {
+		score += 2
+	}
+	return score
 }
 
 func (s *Server) handleTournaments(w http.ResponseWriter, r *http.Request) {

@@ -30,6 +30,12 @@ type playerInfo struct {
 	Ranking    *fitet.Ranking   `json:"ranking,omitempty"`
 	RankingAt  time.Time        `json:"ranking_at"`
 	RankClass  int              `json:"rank_class"` // ID_CLASS the ranking came from
+
+	// Details breaks the ranking points down by tournament; it only changes
+	// with a new ranking publication, so it is fetched once per publication.
+	// DetailsClass is the publication it was read for (also when there was none).
+	Details      *fitet.RankingDetails `json:"details,omitempty"`
+	DetailsClass int                   `json:"details_class,omitempty"`
 }
 
 // groupPlayers lists every singles player who appears in a score sheet.
@@ -113,20 +119,48 @@ func (s *Server) resolvePlayers(ctx context.Context) {
 		if info.Missing || class == 0 {
 			continue
 		}
-		if info.Ranking != nil && info.RankClass == class && now.Sub(info.RankingAt) < rankingMaxAge {
+		// A ranking cached before rankings recorded DetailsPath is read again once.
+		unchecked := info.Ranking != nil && info.Ranking.DetailsPath == "" && info.DetailsClass != class
+		if info.Ranking == nil || info.RankClass != class || now.Sub(info.RankingAt) >= rankingMaxAge || unchecked {
+			if !wait(&first) {
+				return
+			}
+			r, err := s.Client.Ranking(ctx, info.Ref.ID, class)
+			if err != nil {
+				log.Printf("ranking %q: %v", name, err)
+				continue
+			}
+			updated := *info
+			updated.Ranking, updated.RankingAt, updated.RankClass = r, now, class
+			info = &updated
+			s.mu.Lock()
+			s.players[name] = info
+			s.mu.Unlock()
+			changed++
+		}
+		if info.DetailsClass == info.RankClass {
+			continue // already read for this publication
+		}
+		if info.Ranking.DetailsPath == "" { // no breakdown published: don't ask again
+			updated := *info
+			updated.DetailsClass = info.RankClass
+			s.mu.Lock()
+			s.players[name] = &updated
+			s.mu.Unlock()
+			changed++
 			continue
 		}
 		if !wait(&first) {
 			return
 		}
-		r, err := s.Client.Ranking(ctx, info.Ref.ID, class)
+		d, err := s.Client.RankingDetails(ctx, info.Ranking.DetailsPath)
 		if err != nil {
-			log.Printf("ranking %q: %v", name, err)
+			log.Printf("points detail %q: %v", name, err)
 			continue
 		}
-		s.mu.Lock()
 		updated := *info
-		updated.Ranking, updated.RankingAt, updated.RankClass = r, now, class
+		updated.Details, updated.DetailsClass = d, info.RankClass
+		s.mu.Lock()
 		s.players[name] = &updated
 		s.mu.Unlock()
 		changed++

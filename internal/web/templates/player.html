@@ -3,13 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{.Name}} · FITET</title>
+{{$title := printf "%s · FITET" .Name}}
+{{$desc := printf "%s: %d–%d (%s)" (tf "Matches %s" .Season.Season) .All.Won .All.Lost (pct .All.Won .All.Lost)}}
+{{with .Ranking}}{{$desc = printf "%s · %s %s · %s" (t .CategoryLabel) (points .Points) (t "pts") $desc}}{{end}}
+<title>{{$title}}</title>
+<meta name="description" content="{{$desc}}">
+<meta property="og:title" content="{{$title}}">
+<meta property="og:description" content="{{$desc}}">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏓</text></svg>">
 {{template "style"}}
 </head>
 <body>
 <main>
-  {{template "langswitch" (printf "/player/%d" .ID)}}
+  {{template "topbar" (printf "/player/%d" .ID)}}
   {{with .Team}}{{with teamURL .}}<a class="back" href="{{.}}">← {{$.Team}}</a>{{end}}{{else}}<a class="back" href="{{home}}">← {{.GroupName}}</a>{{end}}
   <header style="margin-top:6px">
     <div>
@@ -120,6 +126,38 @@
   </script>
   {{end}}
 
+  {{with .Points}}
+  <section>
+    <h2>{{t "Ranking points"}} <span class="hint">{{tf "ranking of %s" .AsOf}}</span></h2>
+    <div class="sub">{{t "Matches earn no points by themselves: a tournament gives points for the stage reached in each event (only the best tournaments count) plus a fixed amount per group-stage win."}}</div>
+    <div class="sum">
+      <div class="term"><b>{{points .Start}}</b><span>{{t "start of season"}}</span></div>
+      <span class="op">+</span><div class="term"><b>{{points .Tournaments}}</b><span>{{t "tournament placings"}}</span></div>
+      <span class="op">+</span><div class="term"><b>{{points .TournamentWins}}</b><span>{{t "group-stage wins"}}</span></div>
+      {{if .Championship}}<span class="op">+</span><div class="term"><b>{{points .Championship}}</b><span>{{t "team championship"}}</span></div>{{end}}
+      {{if .Protection}}<span class="op">+</span><div class="term"><b>{{points .Protection}}</b><span>{{t "protection"}}</span></div>{{end}}
+      <span class="op">=</span><div class="term total"><b>{{points .Final}}</b><span>{{t "ranking points"}}</span></div>
+    </div>
+    {{with .Rows}}
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>{{t "Tournament"}}</th><th>{{t "Event"}}</th><th>{{t "Reached"}}</th><th class="n">{{t "Placing"}}</th><th class="n">{{t "Group wins"}}</th><th class="n">{{t "Total"}}</th></tr></thead>
+        <tbody>
+        {{range .}}<tr{{if not .Counted}} class="dim"{{end}}>
+          <td class="team">{{$r := .}}{{with tournamentURL .Date .Tournament}}<a class="tl" href="{{.}}">{{$r.Tournament}}</a>{{else}}{{.Tournament}}{{end}}<div class="sub">{{.Date}}</div></td>
+          <td class="sub">{{.Event}}{{with .Level}} · {{.}}{{end}}</td>
+          <td>{{with .Pos}}{{fpos .}}{{end}}</td>
+          <td class="n">{{points .Placement}}{{if not .Counted}} <span class="pending">{{t "not counted"}}</span>{{end}}</td>
+          <td class="n">{{if .Active}}{{.Active}} × {{points .PerWin}}{{else}}–{{end}}</td>
+          <td class="n"><b>+{{points .Total}}</b></td>
+        </tr>{{end}}
+        </tbody>
+      </table>
+    </div>
+    {{end}}
+  </section>
+  {{end}}
+
   {{if .Totals}}
   <section>
     <h2>{{t "By competition"}}</h2>
@@ -156,13 +194,13 @@
     {{range .Tournaments}}{{$multi := gt (len .Events) 1}}
     <article class="tm">
       <div class="tm-head">
-        <span class="opp">{{$tt := .}}{{with tournamentURL .Date}}<a class="tl" href="{{.}}">{{$tt.Title}}</a>{{else}}{{.Title}}{{end}}</span>
-        <span class="res"><span class="fs" style="font-size:15px">{{.Won}}–{{.Lost}}</span></span>
+        <span class="opp">{{$tt := .}}{{with tournamentURL .Date .Title}}<a class="tl" href="{{.}}">{{$tt.Title}}</a>{{else}}{{.Title}}{{end}}</span>
+        <span class="res">{{if .Pending}}<span class="pending" title="{{t "Points appear with the next ranking publication."}}">{{t "next ranking"}}</span>{{end}}<span class="fs" style="font-size:15px">{{.Won}}–{{.Lost}}</span></span>
       </div>
       {{range .Events}}
       <div class="ev">
         <span class="ev-name" title="{{t "Category played"}}">{{.Name}}</span>
-        <span class="ev-res">{{if .Winner}}{{t "🏆 Winner"}}{{else if .Reached}}{{tf "reached %s" (stage .Reached)}}{{end}}{{if $multi}} · {{.Won}}–{{.Lost}}{{end}}</span>
+        <span class="ev-res">{{if .Winner}}{{t "🏆 Winner"}}{{else if .Reached}}{{tf "reached %s" (stage .Reached)}}{{end}}{{if $multi}} · {{.Won}}–{{.Lost}}{{end}}{{with .Points}} · {{template "epts" .}}{{end}}</span>
       </div>
       <div class="tm-rows">{{range .Matches}}{{template "amatch" .}}{{end}}</div>
       {{end}}

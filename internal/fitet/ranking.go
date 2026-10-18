@@ -39,6 +39,10 @@ type Ranking struct {
 	Lost        int     `json:"lost"`
 
 	History []RankPoint `json:"history"` // newest first
+
+	// DetailsPath is the page breaking the points down by tournament
+	// (RankingDetails), e.g. "new_rank/html/247/Maschile/…/details_page_1306.html".
+	DetailsPath string `json:"details_path,omitempty"`
 }
 
 type RankPoint struct {
@@ -187,6 +191,14 @@ func ParseRanking(body []byte) (*Ranking, error) {
 		r.Played, _ = strconv.Atoi(nums[3])
 		r.Won, _ = strconv.Atoi(nums[4])
 		r.Lost, _ = strconv.Atoi(nums[5])
+	}
+
+	// "Dettaglio Punti" tab: an iframe with a static page per athlete and publication.
+	if src, ok := doc.Find("#fragment-3 iframe").Attr("src"); ok {
+		src = strings.Join(strings.Fields(src), "") // the portal wraps long src attributes
+		if i := strings.Index(src, "new_rank/"); i >= 0 {
+			r.DetailsPath = src[i:]
+		}
 	}
 
 	seen := map[string]bool{} // the history table is repeated in two tabs

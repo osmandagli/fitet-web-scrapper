@@ -154,6 +154,7 @@ type playerView struct {
 	Totals      []record
 	Tournaments []tournamentView
 	Chart       *rankChart
+	Points      *pointsView // ranking points breakdown; group players only
 }
 
 type record struct {
@@ -176,7 +177,8 @@ func (r *record) add(m fitet.AthleteMatch) {
 type tournamentView struct {
 	fitet.Tournament
 	record
-	Events []eventView // one per category entered, in the order played
+	Events  []eventView // one per category entered, in the order played
+	Pending bool        // played after the latest ranking publication
 }
 
 // eventView is one category ("gara") of a tournament, e.g.
@@ -187,6 +189,7 @@ type eventView struct {
 	Matches []fitet.AthleteMatch
 	Reached string // stage code of the furthest round, e.g. "QF"
 	Winner  bool
+	Points  *eventPoints // ranking points it gave, when published
 }
 
 // groupEvents splits a tournament's matches by category. Names are compared
@@ -228,9 +231,22 @@ func (s *Server) buildPlayerView(id int, p *playerPage) playerView {
 	}
 
 	// Labels are translated by the template.
+	info := s.playerInfoByID(id)
+	var details *fitet.RankingDetails
+	if info != nil {
+		details = info.Details
+		if p.Ranking != nil {
+			v.Points = newPointsView(details, p.Ranking.AsOf)
+		}
+	}
+
 	tour, team, po := record{Label: "Tournaments"}, record{Label: "Team championships"}, record{Label: "Play-off / out"}
 	for _, t := range p.Season.Tournaments {
 		tv := tournamentView{Tournament: t, Events: groupEvents(t.Matches)}
+		for i := range tv.Events {
+			tv.Events[i].Points = eventPointsFor(details, t.Title, dmy(t.Date), tv.Events[i].Name)
+		}
+		tv.Pending = details != nil && pendingRanking(info, dmy(t.Date))
 		for _, m := range t.Matches {
 			tv.add(m)
 			tour.add(m)

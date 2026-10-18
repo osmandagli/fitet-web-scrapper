@@ -20,6 +20,7 @@ type view struct {
 	Team      string
 	Every     time.Duration
 	MyRow     *fitet.Standing
+	MyPlayer  *myPlayerView
 	NextMatch *teamMatch
 	Form      []teamMatch // my team's played matches, oldest first
 	MyPlayed  int
@@ -27,6 +28,21 @@ type view struct {
 	Rounds    []roundView
 
 	NextTournament *tournamentCard // nil without tournaments
+	GroupPlayers   []groupPlayer
+}
+
+type myPlayerView struct {
+	Name     string
+	SinglesW int
+	SinglesL int
+	DoublesW int
+	DoublesL int
+	Ranking  *fitet.Ranking
+}
+
+type groupPlayer struct {
+	Name string
+	Team string
 }
 
 type matchView struct {
@@ -182,6 +198,37 @@ func (s *Server) buildView(now time.Time) view {
 			}
 		}
 	}
+	if s.Player != "" {
+		for _, ps := range playerStats(v.Form) {
+			if s.isMe(ps.Name) {
+				v.MyPlayer = &myPlayerView{
+					Name:     ps.Name,
+					SinglesW: ps.SinglesW,
+					SinglesL: ps.SinglesL,
+					DoublesW: ps.DoublesW,
+					DoublesL: ps.DoublesL,
+				}
+				break
+			}
+		}
+		if v.MyPlayer != nil {
+			if p := s.playerByName(v.MyPlayer.Name); p != nil {
+				v.MyPlayer.Ranking = p.Ranking
+			}
+		} else {
+			for full, p := range s.players {
+				if !p.Missing && s.isMe(full) {
+					v.MyPlayer = &myPlayerView{Name: full, Ranking: p.Ranking}
+					break
+				}
+			}
+		}
+	}
+	teams := s.groupTeams()
+	for _, name := range s.groupPlayers() {
+		v.GroupPlayers = append(v.GroupPlayers, groupPlayer{Name: name, Team: teams[nameKey(name)]})
+	}
+	sort.Slice(v.GroupPlayers, func(i, j int) bool { return v.GroupPlayers[i].Name < v.GroupPlayers[j].Name })
 
 	byRound := map[int][]matchView{}
 	maxRound := 0

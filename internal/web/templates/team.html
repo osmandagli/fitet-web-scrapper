@@ -3,13 +3,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{.Row.Team}} · {{.GroupName}}</title>
+{{$title := printf "%s · %s" .Row.Team .GroupName}}
+{{$desc := printf "%s · %d %s · %s · %s" (tf "%s place" (ordinal .Row.Pos)) .Row.Points (t "pts") (tf "%dW %dD %dL" .Row.Won .Row.Drawn .Row.Lost) (tf "games %d–%d · sets %d–%d" .Row.GamesWon .Row.GamesLost .Row.SetsWon .Row.SetsLost)}}
+<title>{{$title}}</title>
+<meta name="description" content="{{$desc}}">
+<meta property="og:title" content="{{$title}}">
+<meta property="og:description" content="{{$desc}}">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏓</text></svg>">
 {{template "style"}}
 </head>
 <body>
 <main>
-  {{template "langswitch" (printf "/team/%d" .Row.TeamID)}}
+  {{template "topbar" (printf "/team/%d" .Row.TeamID)}}
   <a class="back" href="{{home}}">← {{.GroupName}}</a>
   <header style="margin-top:6px">
     <div>

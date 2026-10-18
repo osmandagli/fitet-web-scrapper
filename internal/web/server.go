@@ -330,6 +330,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /player/{id}", s.handlePlayer)
 	mux.HandleFunc("GET /tornei", s.handleTournaments)
 	mux.HandleFunc("GET /tornei/{id}", s.handleTournament)
+	mux.HandleFunc("GET /manifest.json", s.handleManifest)
 	mux.HandleFunc("GET /api/data", s.handleData)
 	mux.HandleFunc("GET /api/status", s.handleStatus)
 	mux.HandleFunc("POST /api/refresh", s.handleRefresh)
@@ -340,6 +341,37 @@ func (s *Server) Handler() http.Handler {
 	}
 	root.Handle("/", withLang(langs[0], mux))
 	return root
+}
+
+func (s *Server) handleManifest(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/manifest+json; charset=utf-8")
+	_, _ = w.Write(s.manifestJSON())
+}
+
+func (s *Server) manifestJSON() []byte {
+	s.mu.RLock()
+	name := s.snap.GroupName
+	s.mu.RUnlock()
+	if name == "" {
+		name = "FITET Lombardia"
+	} else {
+		name = name + " · FITET"
+	}
+	m := map[string]any{
+		"name":             name,
+		"short_name":       "FITET",
+		"start_url":        "/",
+		"display":          "standalone",
+		"background_color": "#f4f2ee",
+		"theme_color":      "#d9480f",
+		"icons": []map[string]string{{
+			"src":   "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏓</text></svg>",
+			"sizes": "any",
+			"type":  "image/svg+xml",
+		}},
+	}
+	b, _ := json.MarshalIndent(m, "", "  ")
+	return b
 }
 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {

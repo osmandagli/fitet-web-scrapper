@@ -1,4 +1,9 @@
 {{define "style"}}
+<meta name="theme-color" content="#f4f2ee" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#141312" media="(prefers-color-scheme: dark)">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="FITET Lombardia">
+<link rel="manifest" href="/manifest.json">
 <style>
   :root {
     --bg: #f4f2ee; --surface: #ffffff; --surface-2: #faf9f6; --line: #e4e0d8;
@@ -15,6 +20,7 @@
     }
   }
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; } /* else rules like ".pdrop a { display: flex }" win over the attribute */
   body { margin: 0; background: var(--bg); color: var(--text); font-size: 15px; line-height: 1.45; }
   main { max-width: 960px; margin: 0 auto; padding: 20px 16px 48px; overflow-wrap: anywhere; }
   .num, td.n, th.n { font-variant-numeric: tabular-nums; }
@@ -94,7 +100,12 @@
   a.card.link:hover { border-color: var(--accent); }
   .hint { font-size: 12px; font-weight: 500; color: var(--muted); margin-left: 6px; }
   .back { color: var(--muted); text-decoration: none; font-size: 13px; }
-  .langs { float: right; font-size: 12px; font-weight: 600; letter-spacing: .04em; }
+  .topbar { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .homebtn { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; color: var(--muted);
+             background: var(--surface); border: 1px solid var(--line); }
+  .homebtn:hover { color: var(--accent); border-color: var(--accent); }
+  .homebtn svg { width: 18px; height: 18px; }
+  .langs { margin-left: auto; font-size: 12px; font-weight: 600; letter-spacing: .04em; }
   .langs a, .langs span { padding: 2px 6px; border-radius: 6px; text-decoration: none; color: var(--muted); }
   .langs span { color: var(--text); background: var(--surface); border: 1px solid var(--line); }
   .langs a:hover { color: var(--accent); }
@@ -137,6 +148,16 @@
   .search { display: flex; gap: 8px; align-items: center; margin-bottom: 18px; }
   .search input { font: inherit; font-size: 14px; flex: 1; max-width: 340px; padding: 7px 11px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--text); }
   .search input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .psearch { position: relative; max-width: 360px; flex: 1; }
+  .psearch input { width: 100%; max-width: none; }
+  .pdrop { position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: var(--surface); border: 1px solid var(--line);
+           border-radius: 10px; box-shadow: 0 6px 20px rgba(0,0,0,.14); max-height: 280px; overflow-y: auto; z-index: 10; }
+  .pdrop a, .pdrop .pempty { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 8px 12px;
+                             text-decoration: none; color: var(--text); font-size: 13px; border-bottom: 1px solid var(--line); }
+  .pdrop a:last-child, .pdrop .pempty:last-child { border-bottom: 0; }
+  .pdrop a:hover, .pdrop a:focus { background: var(--surface-2); color: var(--accent); outline: none; }
+  .pdrop .pteam { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pdrop .pempty { color: var(--muted); }
   .event { scroll-margin-top: 12px; }
   .event > h2 { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; }
   .podium { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr)); gap: 10px; margin-bottom: 14px; }
@@ -173,6 +194,18 @@
   .grp-card .gm { padding: 4px 10px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
   .grp-card .gm b { color: var(--text); font-variant-numeric: tabular-nums; }
   .entries td.n { width: 1%; }
+
+  /* ranking points */
+  .gain { font-size: 12px; font-weight: 700; color: var(--win); font-variant-numeric: tabular-nums; white-space: nowrap; cursor: help; }
+  .gain.zero { color: var(--muted); font-weight: 500; }
+  .pending { font-size: 11px; color: var(--muted); border: 1px dashed var(--line); border-radius: 99px; padding: 0 6px; white-space: nowrap; }
+  .sum { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin: 10px 0 14px; font-variant-numeric: tabular-nums; }
+  .sum .term { background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; }
+  .sum .term b { display: block; font-size: 16px; }
+  .sum .term span { color: var(--muted); font-size: 12px; }
+  .sum .term.total { background: var(--accent-soft); border-color: var(--accent); }
+  .sum .op { color: var(--muted); font-weight: 700; }
+  tr.dim td { color: var(--muted); }
   .back:hover { color: var(--accent); }
 
   /* team page */
@@ -256,6 +289,9 @@
 {{end}}
 
 {{/* IT | EN switch; the argument is this page's path without the language prefix. */}}
+{{/* Top of every page: home button (except on the home page) and IT | EN. */}}
+{{define "topbar"}}<div class="topbar">{{if ne . "/"}}<a class="homebtn" href="{{home}}" title="{{t "Home page"}}" aria-label="{{t "Home page"}}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5"/></svg></a>{{end}}{{template "langswitch" .}}</div>{{end}}
+
 {{define "langswitch"}}<nav class="langs" aria-label="Lingua / Language">{{if eq lang "it"}}<span lang="it">IT</span><a href="{{alt .}}" lang="en" hreflang="en">EN</a>{{else}}<a href="{{alt .}}" lang="it" hreflang="it">IT</a><span lang="en">EN</span>{{end}}</nav>{{end}}
 
 {{/* Tournament list tags (Open, Categoria…). */}}
@@ -270,6 +306,9 @@
 
 {{/* How far a group player got in a tournament event. */}}
 {{define "placing"}}<span class="badge {{.Stage}}{{if .Live}} live{{end}}">{{if eq .Stage "W"}}{{t "🏆 Winner"}}{{else if eq .Stage "E"}}{{t "Entered"}}{{else if eq .Stage "G"}}{{tf "Group %d · %s" .Group (ordinal .Pos)}}{{else}}{{out .Stage}}{{end}}{{if .Live}} · {{t "still in"}}{{end}}</span>{{end}}
+
+{{/* Ranking points an event gave a player (an *eventPoints), with the sum spelled out on hover. */}}
+{{define "epts"}}{{with .}}<span class="gain{{if not .Total}} zero{{end}}" title="{{if .Placement}}{{tf "placing %s" (points .Placement)}}{{if not .Counted}} ({{t "not counted"}}){{end}}{{end}}{{if .Active}}{{if .Placement}} + {{end}}{{if eq .Active 1}}{{tf "1 group win × %s" (points .PerWin)}}{{else}}{{tf "%d group wins × %s" .Active (points .PerWin)}}{{end}}{{end}}">+{{points .Total}}</span>{{end}}{{end}}
 
 {{/* A team name that links to its page when we know the team. */}}
 {{define "team"}}{{with teamURL .}}<a class="tl" href="{{.}}">{{$}}</a>{{else}}{{.}}{{end}}{{end}}

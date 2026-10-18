@@ -42,6 +42,10 @@ func fakePortal(t *testing.T) *httptest.Server {
 			file, ok = "../fitet/testdata/ranking_"+id+".html", true
 		case "/incontri_atleta_acc.php":
 			file, ok = "../fitet/testdata/atleta_"+id+".html", true
+		case "/new_rank/html/247/Maschile/00/0c/65/4e/details_page_1359.html":
+			file, ok = "../fitet/testdata/punti_812366.html", true
+		case "/new_rank/html/247/Maschile/00/0c/6a/b7/details_page_1306.html":
+			file, ok = "../fitet/testdata/punti_813751.html", true
 		case "/tornei/elenco_tornei.php":
 			file, ok = "../fitet/testdata/tornei_elenco_"+r.URL.Query().Get("TOR")+".html", true
 			if _, err := os.Stat(file); err != nil {
@@ -115,11 +119,23 @@ func TestIndexPage(t *testing.T) {
 		"Giornata 14",                       // return leg rounds present, in Italian
 		"1<span class=\"sub\"> / 14</span>", // our matches, not the whole group's
 		`href="/team/39067"`,                // team names link to team pages
+		`href="/player/812366"`,             // MyPlayer quick-jump card links to my profile
+		"DAGLI OSMAN BUGRA ›",               // MyPlayer card heading
+		"singolari 1–1 · doppi 1–0",         // MyPlayer card championship record
+		`id="pq"`,                           // global player search input
+		`property="og:title"`,               // OpenGraph tags
+		`rel="manifest" href="/manifest.json"`,
 	} {
 		if !strings.Contains(html, want) {
 			t.Errorf("page missing %q", want)
 		}
 	}
+
+	resp, err = http.Get(app.URL + "/manifest.json")
+	if err != nil || resp.StatusCode != 200 {
+		t.Fatalf("manifest.json: %v %v", err, resp)
+	}
+	resp.Body.Close()
 
 	// The English site lives under /en/ and links stay inside it.
 	resp, err = http.Get(app.URL + "/en/")
@@ -484,7 +500,8 @@ func TestTournaments(t *testing.T) {
 		`<span class="tp mate" data-p="BARGAGLI PAOLO">`, // teammate entered at Vedano
 		"🥇 <span class=\"tp \" data-p=\"GEMMA IVAN\">",   // Open3 winner
 		`<span class="tp me" data-p="DAGLI OSMAN BUGRA">`,
-		`<span class="badge 64">Turno a 64</span>`, // how far I got
+		`<span class="badge 64">Trentaduesimi</span>`,                                       // how far I got
+		`<span class="gain" title="piazzamento 72 + 1 vittoria nel girone × 15">+87</span>`, // and what it was worth
 	} {
 		if !strings.Contains(html, want) {
 			t.Errorf("tournaments page missing %q", want)
@@ -517,10 +534,25 @@ func TestTournaments(t *testing.T) {
 	if err := s.Build(context.Background(), out); err != nil {
 		t.Fatal(err)
 	}
-	for _, f := range []string{"tornei.html", "tornei/1.html", "tornei/8.html", "en/tornei/1.html"} {
+	for _, f := range []string{"tornei.html", "tornei/1.html", "tornei/8.html", "en/tornei/1.html", "manifest.json"} {
 		if _, err := os.Stat(out + "/" + f); err != nil {
 			t.Errorf("static build: %v", err)
 		}
+	}
+
+	// Same-date tournaments in different places or with different names do not collide.
+	s.tournaments[99] = &tournament{
+		TournamentRef: fitet.TournamentRef{ID: 99, Date: "29/08/2026", Place: "Brescia (BS)", Played: true},
+		Name:          "Torneo Provinciale Brescia",
+	}
+	if got := s.tournamentURL("29/08/2026", "Torneo Open memorial 'Christian Noviello' del 29/08/2026 a Saronno (VA)"); got != "/tornei/1" {
+		t.Errorf("tournamentURL Saronno = %q, want /tornei/1", got)
+	}
+	if got := s.tournamentURL("29/08/2026", "Torneo Provinciale Brescia del 29/08/2026 a Brescia (BS)"); got != "/tornei/99" {
+		t.Errorf("tournamentURL Brescia = %q, want /tornei/99", got)
+	}
+	if got := s.tournamentURL("29/08/2026", "Torneo Open di Cortemaggiore del 29/08/2026 a Cortemaggiore (PC)"); got != "" {
+		t.Errorf("tournamentURL out-of-region = %q, want empty", got)
 	}
 
 	// Results of a finished tournament come from the cache next time.
@@ -530,5 +562,81 @@ func TestTournaments(t *testing.T) {
 	}
 	if needsFetch(s2.tournaments[1], s2.tournaments[1].TournamentRef, time.Now()) {
 		t.Error("a tournament from August shouldn't be fetched again")
+	}
+}
+
+func TestRankingPoints(t *testing.T) {
+	portal := fakePortal(t)
+	defer portal.Close()
+
+	client := fitet.NewClient()
+	client.BaseURL = portal.URL
+	s := NewServer(client, Options{Group: fitet.Group{CAM: 408, ANNO: 41}, Team: "BONACOSSA - 2", Player: "DAGLI OSMAN",
+		Every: 6 * time.Hour, CacheDir: t.TempDir(), Committee: 4})
+	s.refresh(context.Background())
+
+	if p := s.players["BARGAGLI PAOLO"]; p == nil || p.Details == nil || p.Details.Final != 6220 || p.DetailsClass != 247 {
+		t.Fatalf("Bargagli's points detail not fetched: %+v", p)
+	}
+
+	app := httptest.NewServer(s.Handler())
+	defer app.Close()
+	get := func(path string) string {
+		resp, err := http.Get(app.URL + path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		b, _ := io.ReadAll(resp.Body)
+		return string(b)
+	}
+
+	html := get("/player/813751")
+	for _, want := range []string{
+		"Punti in classifica", "classifica del 27/09/2026",
+		"<b>5.792</b><span>inizio stagione</span>", "<b>338</b><span>piazzamenti nei tornei</span>",
+		"<b>90</b><span>vittorie nei gironi</span>", "<b>6.220</b><span>punti in classifica</span>",
+		"Torneo Open di Montichiari", "Quarti", "2 × 15", "<b>+137</b>", // 107 for the quarter-final + 2 wins × 15
+		"Sedicesimi", // 16F
+	} {
+		if !strings.Contains(html, want) {
+			t.Errorf("player page missing %q", want)
+		}
+	}
+
+	// Saronno: 72 for the placing + one group win × 15, on the tournament page.
+	html = get("/tornei/1")
+	if !strings.Contains(html, `title="piazzamento 72 + 1 vittoria nel girone × 15">+87</span>`) {
+		t.Error("tournament page doesn't show the points Dagli got")
+	}
+}
+
+// Rankings cached before they recorded the points detail link are read again once.
+func TestRankingPointsFromOldCache(t *testing.T) {
+	portal := fakePortal(t)
+	defer portal.Close()
+	client := fitet.NewClient()
+	client.BaseURL = portal.URL
+	cache := t.TempDir()
+	opt := Options{Group: fitet.Group{CAM: 408, ANNO: 41}, Team: "BONACOSSA - 2", Player: "DAGLI OSMAN", Every: 6 * time.Hour, CacheDir: cache}
+	s := NewServer(client, opt)
+	s.refresh(context.Background())
+	for name, p := range s.players { // as an older build would have saved them
+		if p.Ranking != nil {
+			old := *p.Ranking
+			old.DetailsPath = ""
+			p.Ranking, p.Details, p.DetailsClass = &old, nil, 0
+			s.players[name] = p
+		}
+	}
+	s.savePlayers()
+
+	s2 := NewServer(client, opt)
+	s2.refresh(context.Background())
+	if p := s2.players["BARGAGLI PAOLO"]; p == nil || p.Details == nil || p.Details.Final != 6220 {
+		t.Fatalf("points detail not fetched after an old cache: %+v", p)
+	}
+	if p := s2.players["FANELLI MATTIA"]; p != nil && p.Ranking != nil && p.DetailsClass != p.RankClass {
+		t.Errorf("a player without a breakdown is asked again next time: %+v", p)
 	}
 }

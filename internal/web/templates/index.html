@@ -3,13 +3,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{with .GroupName}}{{.}}{{else}}FITET{{end}} · {{t "Results"}}</title>
+{{$title := printf "%s · %s" (or .GroupName "FITET") (t "Results")}}
+{{$desc := t "Standings, results and lineups"}}{{with .MyRow}}{{$desc = printf "%s · %s (%d %s) · %s" .Team (ordinal .Pos) .Points (t "pts") (tf "%dW %dD %dL" .Won .Drawn .Lost)}}{{end}}
+<title>{{$title}}</title>
+<meta name="description" content="{{$desc}}">
+<meta property="og:title" content="{{$title}}">
+<meta property="og:description" content="{{$desc}}">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏓</text></svg>">
 {{template "style"}}
 </head>
 <body>
 <main>
-  {{template "langswitch" "/"}}
+  {{template "topbar" "/"}}
   {{if tournaments}}{{template "tabs" "group"}}{{end}}
   <header>
     <div>
@@ -35,6 +40,18 @@
       <div class="big num">{{ordinal .Pos}} <span class="sub">· {{.Points}} {{t "pts"}}</span></div>
       <div class="sub num">{{tf "%dW %dD %dL" .Won .Drawn .Lost}} · {{tf "games %d–%d · sets %d–%d" .GamesWon .GamesLost .SetsWon .SetsLost}}</div>
     </a>
+    {{end}}
+    {{with .MyPlayer}}
+    {{$u := playerURL .Name}}
+    {{if $u}}<a class="card link" href="{{$u}}">{{else}}<div class="card">{{end}}
+      <h3>{{.Name}}{{if $u}} ›{{end}}</h3>
+      {{with .Ranking}}
+      <div class="big num">{{points .Points}} <span class="sub">· {{t .CategoryLabel}}</span></div>
+      {{else}}
+      <div class="big num">{{.SinglesW}}–{{.SinglesL}}</div>
+      {{end}}
+      <div class="sub num">{{with .Ranking}}{{if .Position}}#{{.Position}} · {{end}}{{end}}{{tf "singles %d–%d" .SinglesW .SinglesL}}{{if or .DoublesW .DoublesL}} · {{tf "doubles %d–%d" .DoublesW .DoublesL}}{{end}}</div>
+    {{if $u}}</a>{{else}}</div>{{end}}
     {{end}}
     {{with .NextMatch}}
     <div class="card">
@@ -66,6 +83,22 @@
     </div>
     {{end}}
   </div>
+
+  {{if or .GroupPlayers (not static)}}
+  <form class="search" action="{{home}}player/find" method="get" id="pform">
+    <div class="psearch">
+      <input id="pq" name="name" type="search" placeholder="{{t "Find a player…"}}" autocomplete="off" aria-label="{{t "Find a player…"}}">
+      <div class="pdrop" id="pdrop" hidden>
+        {{range .GroupPlayers}}
+        {{$href := playerURL .Name}}{{if not $href}}{{$href = teamURL .Team}}{{end}}
+        {{if $href}}<a class="pitem" href="{{$href}}" data-p="{{key .Name}} {{key .Team}}"><span>{{if me .Name}}<span class="me">{{.Name}}</span>{{else}}{{.Name}}{{end}}{{template "pts" .Name}}</span><span class="pteam">{{.Team}}</span></a>{{end}}
+        {{end}}
+        <div class="pempty" id="pempty" hidden>{{t "No matching player in this group."}}</div>
+        {{if not static}}<a class="psubmit" id="psubmit" href="#" hidden><span>{{t "Search on FITET ↗"}}</span><span class="pteam" id="pquery"></span></a>{{end}}
+      </div>
+    </div>
+  </form>
+  {{end}}
 
   <section>
     <h2>{{t "Standings"}} <span class="hint">{{t "tap a team to see its lineups"}}</span></h2>
@@ -122,5 +155,59 @@
 </main>
 
 {{template "live" .}}
+<script>
+(() => {
+  const q = document.getElementById("pq"), drop = document.getElementById("pdrop"),
+        form = document.getElementById("pform"), empty = document.getElementById("pempty"),
+        sub = document.getElementById("psubmit"), pquery = document.getElementById("pquery");
+  if (!q || !drop) return;
+  // "romano" finds "Romanò": compare without accents.
+  const fold = s => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+  const items = [...drop.querySelectorAll(".pitem")];
+  for (const el of items) el.dataset.f = fold(el.dataset.p);
+  let first = null;
+  function filter() {
+    const raw = q.value.trim(), terms = fold(raw).split(/\s+/).filter(Boolean);
+    first = null;
+    if (!terms.length) { drop.hidden = true; return; }
+    let shown = 0;
+    for (const el of items) {
+      const hit = shown < 8 && terms.every(t => el.dataset.f.includes(t));
+      el.hidden = !hit;
+      if (hit) { shown++; first = first || el; }
+    }
+    if (empty) empty.hidden = shown > 0;
+    if (sub) {
+      sub.hidden = raw.length < 2;
+      sub.href = form.action + "?name=" + encodeURIComponent(raw);
+      pquery.textContent = "“" + raw + "”";
+    }
+    drop.hidden = false;
+  }
+  q.addEventListener("input", filter);
+  q.addEventListener("focus", () => { if (q.value.trim()) filter(); });
+  // ↑/↓ move through the results, Esc closes them.
+  const visible = () => [...drop.querySelectorAll("a:not([hidden])")];
+  form.addEventListener("keydown", e => {
+    if (e.key === "Escape") { q.focus(); drop.hidden = true; return; } // focus first: focusing reopens the list
+    if (e.key !== "ArrowDown" && e.key !== "ArrowUp" || drop.hidden) return;
+    const links = visible(), i = links.indexOf(document.activeElement);
+    if (!links.length) return;
+    e.preventDefault();
+    if (e.key === "ArrowDown") links[Math.min(i + 1, links.length - 1)].focus();
+    else if (i <= 0) q.focus();
+    else links[i - 1].focus();
+  });
+  document.addEventListener("click", e => { if (!form.contains(e.target)) drop.hidden = true; });
+  form.addEventListener("submit", e => {
+    if (first && ({{if static}}true{{else}}items.filter(el => !el.hidden).length === 1{{end}})) {
+      e.preventDefault();
+      location.href = first.href;
+    } else if ({{if static}}true{{else}}!q.value.trim(){{end}}) {
+      e.preventDefault();
+    }
+  });
+})();
+</script>
 </body>
 </html>

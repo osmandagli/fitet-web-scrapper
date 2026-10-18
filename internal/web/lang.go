@@ -85,8 +85,9 @@ func (s *Server) langFuncs(lang string) template.FuncMap {
 		"day":   func(t time.Time) string { return formatDay(lang, t) },
 		"round": func(code string) string { return roundName(lang, code, false) },
 		"out":   func(code string) string { return roundName(lang, code, true) },
-		"tournamentURL": func(date string) string {
-			if u := s.tournamentURL(date); u != "" {
+		"fpos":  func(code string) string { return fitetPos(lang, code) },
+		"tournamentURL": func(date, title string) string {
+			if u := s.tournamentURL(date, title); u != "" {
 				return prefix + u
 			}
 			return ""
@@ -200,8 +201,10 @@ func roundName(lang, code string, out bool) string {
 		n = names{"Quarter-finals", "Quarter-final", "Quarti di finale", "Quarti"}
 	case "OF":
 		n = names{"Last 16", "Last 16", "Ottavi di finale", "Ottavi"}
-	case "16":
+	case "32":
 		n = names{"Last 32", "Last 32", "Sedicesimi di finale", "Sedicesimi"}
+	case "64":
+		n = names{"Last 64", "Last 64", "Trentaduesimi di finale", "Trentaduesimi"}
 	default:
 		n = names{"Last " + code, "Last " + code, "Turno a " + code, "Turno a " + code}
 	}
@@ -214,6 +217,21 @@ func roundName(lang, code string, out bool) string {
 		return n.enOut
 	}
 	return n.en
+}
+
+// fitetPos names the stage reached as the ranking writes it: GQ (groups),
+// QF, OF…, and "16F" for the sedicesimi (the last 32).
+func fitetPos(lang, code string) string {
+	if code == "GQ" {
+		if lang == langIT {
+			return "Girone"
+		}
+		return "Groups"
+	}
+	if n, err := strconv.Atoi(strings.TrimSuffix(code, "F")); err == nil && strings.HasSuffix(code, "F") {
+		return roundName(lang, strconv.Itoa(2*n), true)
+	}
+	return roundName(lang, code, true)
 }
 
 // roundNumber reads codes like "3T" (round 3 of the draw).
@@ -257,24 +275,29 @@ var italian = map[string]string{
 	"Done": "Conclusa",
 
 	// group page
-	"%dW %dD %dL":                   "%dV %dN %dP",
-	"games %d–%d · sets %d–%d":      "partite %d–%d · set %d–%d",
-	"Next match":                    "Prossimo incontro",
-	"round %d":                      "giornata %d",
-	"%d left this season":           "%d ancora da giocare",
-	"Standings":                     "Classifica",
-	"tap a team to see its lineups": "tocca una squadra per vedere le formazioni",
-	"Team":                          "Squadra",
-	"Pts":                           "Pt",
-	"P":                             "G",
-	"W":                             "V",
-	"D":                             "N",
-	"L":                             "P",
-	"Games":                         "Partite",
-	"Sets":                          "Set",
-	"Points":                        "Punti",
-	"Results & fixtures":            "Risultati e calendario",
-	"Round %d":                      "Giornata %d",
+	"%dW %dD %dL":                       "%dV %dN %dP",
+	"games %d–%d · sets %d–%d":          "partite %d–%d · set %d–%d",
+	"singles %d–%d":                     "singolari %d–%d",
+	"doubles %d–%d":                     "doppi %d–%d",
+	"Next match":                        "Prossimo incontro",
+	"round %d":                          "giornata %d",
+	"%d left this season":               "%d ancora da giocare",
+	"Standings":                         "Classifica",
+	"Standings, results and lineups":    "Classifica, risultati e formazioni",
+	"Search on FITET ↗":                 "Cerca su FITET ↗",
+	"No matching player in this group.": "Nessun giocatore corrispondente in questo girone.",
+	"tap a team to see its lineups":     "tocca una squadra per vedere le formazioni",
+	"Team":                              "Squadra",
+	"Pts":                               "Pt",
+	"P":                                 "G",
+	"W":                                 "V",
+	"D":                                 "N",
+	"L":                                 "P",
+	"Games":                             "Partite",
+	"Sets":                              "Set",
+	"Points":                            "Punti",
+	"Results & fixtures":                "Risultati e calendario",
+	"Round %d":                          "Giornata %d",
 	"Fetching results from the FITET portal…": "Caricamento dei risultati dal portale FITET…",
 	"this page will update by itself.":        "la pagina si aggiornerà da sola.",
 
@@ -359,6 +382,26 @@ var italian = map[string]string{
 	// tournaments
 	"Open":                 "Open",
 	"Upcoming tournaments": "Prossimi tornei",
+	"not counted":          "non conteggiato",
+	"start of season":      "inizio stagione",
+	"Points appear with the next ranking publication.": "I punti compariranno con la prossima pubblicazione della classifica.",
+	"tournament placings":                              "piazzamenti nei tornei",
+	"next ranking":                                     "prossima classifica",
+	"group-stage wins":                                 "vittorie nei gironi",
+	"Reached":                                          "Fase raggiunta",
+	"Matches earn no points by themselves: a tournament gives points for the stage reached in each event (only the best tournaments count) plus a fixed amount per group-stage win.": "I singoli incontri non danno punti: un torneo assegna punti per la fase raggiunta in ogni gara (contano solo i tornei migliori) più una quota fissa per ogni vittoria nei gironi.",
+	"1 group win × %s":   "1 vittoria nel girone × %s",
+	"%d group wins × %s": "%d vittorie nei gironi × %s",
+	"Group wins":         "Vittorie nei gironi",
+	"ranking of %s":      "classifica del %s",
+	"team championship":  "campionato a squadre",
+	"Ranking points the event gave, from the latest ranking publication": "Punti in classifica ottenuti nella gara, dall'ultima pubblicazione della classifica",
+	"Tournament":           "Torneo",
+	"Placing":              "Piazzamento",
+	"ranking points":       "punti in classifica",
+	"protection":           "protezione",
+	"placing %s":           "piazzamento %s",
+	"Home page":            "Pagina iniziale",
 	"+ %d more events":     "+ altre %d gare",
 	"Championship":         "Campionato",
 	"Regional tournaments": "Tornei regionali",

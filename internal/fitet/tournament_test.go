@@ -148,3 +148,40 @@ func TestParseEntries(t *testing.T) {
 		t.Errorf("points with star: %+v", es[1])
 	}
 }
+
+func TestParseRankingDetails(t *testing.T) {
+	d, err := ParseRankingDetails(readTestdata(t, "punti_813751.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if d.Start != 5792 || d.Championship != 0 || d.Tournaments != 338 || d.TournamentWins != 90 || d.Final != 6220 {
+		t.Errorf("summary: %+v", d)
+	}
+	if len(d.Matches) != 26 || len(d.Placements) != 6 || len(d.GroupWins) != 6 {
+		t.Fatalf("got %d matches, %d placements, %d group wins", len(d.Matches), len(d.Placements), len(d.GroupWins))
+	}
+	if m := d.Matches[1]; m.Opponent != "CAMPANALE MARCO" || m.Won || m.Counted || m.Phase != "GIR" {
+		t.Errorf("discarded loss: %+v", m)
+	}
+	if p := d.Placements[0]; p.Tournament != "Torneo Open di Montichiari" || p.Points != 107 || p.Pos != "QF" || p.Level != "Open4" || !p.Counted {
+		t.Errorf("placement: %+v", p)
+	}
+	if g := d.GroupWins[1]; g.Tournament != "MEMORIAL LUCA DE LUCA" || g.PerWin != 10 || g.Active != 2 || g.Points != 20 {
+		t.Errorf("group wins: %+v", g)
+	}
+
+	d, err = ParseRankingDetails(readTestdata(t, "punti_812366.html"))
+	if err != nil || d.Final != 6159 || d.Placements[0].Pos != "32F" || d.GroupWins[0].Points != 15 {
+		t.Errorf("Dagli: %v %+v", err, d)
+	}
+}
+
+func TestRankingDetailsPath(t *testing.T) {
+	r, err := ParseRanking(readTestdata(t, "ranking_813751.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.DetailsPath != "new_rank/html/247/Maschile/00/0c/6a/b7/details_page_1306.html" {
+		t.Errorf("details path %q", r.DetailsPath)
+	}
+}

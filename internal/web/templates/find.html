@@ -8,7 +8,7 @@
 </head>
 <body>
 <main>
-  {{template "langswitch" (printf "/player/find?name=%s" (urlquery .Query))}}
+  {{template "topbar" (printf "/player/find?name=%s" (urlquery .Query))}}
   <a class="back" href="javascript:history.back()">{{t "← Back"}}</a>
   <header style="margin-top:6px"><div><div class="eyebrow">{{t "Player search"}}</div><h1>{{.Query}}</h1></div></header>
   {{if .Refs}}

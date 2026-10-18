@@ -3,13 +3,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{t "Tournaments"}} · FITET Lombardia</title>
+{{$title := printf "%s · FITET Lombardia" (t "Tournaments")}}
+{{$desc := t "Results and entries of the season's tournaments in Lombardy. ★ = your team, bold = players of your group."}}
+<title>{{$title}}</title>
+<meta name="description" content="{{$desc}}">
+<meta property="og:title" content="{{$title}}">
+<meta property="og:description" content="{{$desc}}">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏓</text></svg>">
 {{template "style"}}
 </head>
 <body>
 <main>
-  {{template "langswitch" "/tornei"}}
+  {{template "topbar" "/tornei"}}
   {{template "tabs" "tournaments"}}
   <header>
     <div>
@@ -65,7 +70,7 @@
         {{if .Ours}}
         <div>
           <div class="sub" style="margin-bottom:4px">{{t "Your group:"}}</div>
-          <div class="chips">{{range .Ours}}<span class="chip{{if .Mine}} mine{{end}}" title="{{.Event}}"><b>{{template "tp" .Name}}</b> {{template "placing" .}}</span>{{end}}</div>
+          <div class="chips">{{range .Ours}}<span class="chip{{if .Mine}} mine{{end}}" title="{{.Event}}"><b>{{template "tp" .Name}}</b> {{template "placing" .}} {{template "epts" .Points}}</span>{{end}}</div>
         </div>
         {{end}}
         <a class="more" href="{{home}}tornei/{{.ID}}">{{t "Draws and groups"}} ›</a>
