@@ -1,0 +1,40 @@
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 */6 * * 6,0,1'
+
+jobs:
+  build:
+    permissions: read-all
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout to repository
+        uses: actions/checkout@4
+
+      - name: Setup Go environment
+        uses: actions/setup-go@v7.0.0
+        with:
+          go-version-file: go.mod
+
+      - name: Cache
+        uses: actions/cache@v5.1.0
+        with:
+          key: fitet-cache-${{ github.run_id }}
+          restore-keys: fitet-cache-
+
+      - name: Test
+        run: |
+          go test -v ./...
+
+      - name: Run
+        run: |
+          go run ./cmd/fitet-build -out public -cache .cache
+
+      - name: Deploy to Cloudflare Workers with Wrangler
+        uses: cloudflare/wrangler-action@v3.1.0
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy public --project-name=fitet --branch=main
+        
