@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="{{lang}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{tf "Find %s" .Query}} · FITET</title>
+{{template "style"}}
+</head>
+<body>
+<main>
+  {{template "langswitch" (printf "/player/find?name=%s" (urlquery .Query))}}
+  <a class="back" href="javascript:history.back()">{{t "← Back"}}</a>
+  <header style="margin-top:6px"><div><div class="eyebrow">{{t "Player search"}}</div><h1>{{.Query}}</h1></div></header>
+  {{if .Refs}}
+  <p class="sub">{{tf "%d athlete(s) match this name on FITET. Pick the right one:" (len .Refs)}}</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>{{t "Name"}}</th><th>{{t "Born"}}</th><th class="n">{{t "Card"}}</th></tr></thead>
+      <tbody>{{range .Refs}}<tr><td class="team"><a class="tl" href="{{home}}player/{{.ID}}">{{.Name}}</a></td><td>{{.Born}}</td><td class="n">{{.Card}}</td></tr>{{end}}</tbody>
+    </table>
+  </div>
+  {{else}}
+  <p class="sub">{{tf "No athlete called “%s” was found in the FITET ranking." .Query}}</p>
+  {{end}}
+</main>
+</body>
+</html>

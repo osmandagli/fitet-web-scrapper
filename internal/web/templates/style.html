@@ -1,0 +1,238 @@
+{{define "style"}}
+<style>
+  :root {
+    --bg: #f4f2ee; --surface: #ffffff; --surface-2: #faf9f6; --line: #e4e0d8;
+    --text: #1c1b19; --muted: #6f6a61; --accent: #d9480f; --accent-soft: #fff0e8;
+    --win: #2b8a3e; --loss: #c92a2a; --draw: #868e96; --mine: #fff4d6; --mine-line: #f2c94c;
+    --radius: 12px;
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141312; --surface: #1d1c1a; --surface-2: #232220; --line: #33312d;
+      --text: #ece9e3; --muted: #9b958b; --accent: #ff7a3d; --accent-soft: #3a2418;
+      --win: #51cf66; --loss: #ff6b6b; --draw: #adb5bd; --mine: #332b15; --mine-line: #8a6d1d;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-size: 15px; line-height: 1.45; }
+  main { max-width: 960px; margin: 0 auto; padding: 20px 16px 48px; overflow-wrap: anywhere; }
+  .num, td.n, th.n { font-variant-numeric: tabular-nums; }
+
+  header { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; justify-content: space-between; margin-bottom: 20px; }
+  .eyebrow { color: var(--accent); font-weight: 700; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
+  h1 { margin: 2px 0 0; font-size: 28px; letter-spacing: -.02em; }
+  .status { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--win); display: inline-block; }
+  .dot.err { background: var(--loss); }
+  .dot.busy { background: var(--accent); animation: pulse 1s infinite; }
+  @keyframes pulse { 50% { opacity: .3; } }
+  button { font: inherit; font-size: 13px; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--line);
+           background: var(--surface); color: var(--text); cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  button:disabled { opacity: .5; cursor: default; }
+  .error { background: var(--accent-soft); border: 1px solid var(--accent); border-radius: var(--radius);
+           padding: 10px 14px; margin-bottom: 16px; font-size: 14px; }
+
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); gap: 12px; margin-bottom: 24px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
+  .card h3 { margin: 0 0 6px; font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+  .big { font-size: 30px; font-weight: 750; letter-spacing: -.02em; }
+  .sub { color: var(--muted); font-size: 13px; }
+  .form { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+  .pill { width: 28px; height: 28px; border-radius: 7px; display: grid; place-items: center; color: #fff;
+          font-weight: 700; font-size: 13px; }
+  .pill.V { background: var(--win); } .pill.P { background: var(--loss); } .pill.N { background: var(--draw); }
+
+  section { margin-bottom: 28px; }
+  h2 { font-size: 17px; margin: 0 0 10px; }
+  .table-wrap { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 9px 10px; text-align: left; white-space: nowrap; }
+  th { font-size: 12px; color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--line); background: var(--surface-2); }
+  td { border-bottom: 1px solid var(--line); }
+  tr:last-child td { border-bottom: 0; }
+  th.n, td.n { text-align: right; }
+  td.team { white-space: normal; min-width: 180px; font-weight: 550; }
+  td.pts { font-weight: 750; }
+  tr.mine td { background: var(--mine); }
+  tr.mine td:first-child { box-shadow: inset 3px 0 0 var(--mine-line); }
+  .diff-pos { color: var(--win); } .diff-neg { color: var(--loss); }
+
+  details.round { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); margin-bottom: 8px; }
+  details.round > summary { list-style: none; cursor: pointer; padding: 11px 14px; display: flex; gap: 10px; align-items: baseline; }
+  details.round > summary::-webkit-details-marker { display: none; }
+  details.round > summary::before { content: "▸"; color: var(--muted); transition: transform .15s; }
+  details.round[open] > summary::before { transform: rotate(90deg); }
+  .rname { font-weight: 650; } .leg { color: var(--muted); font-size: 13px; }
+  .rdate { margin-left: auto; color: var(--muted); font-size: 13px; }
+  .tag { font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 99px; text-transform: uppercase; letter-spacing: .04em; }
+  .tag.done { background: var(--surface-2); color: var(--muted); border: 1px solid var(--line); }
+  .tag.new { background: var(--accent); color: #fff; }
+  .match { display: grid; grid-template-columns: 118px minmax(0, 1fr) 64px minmax(0, 1fr); gap: 10px; align-items: center;
+           padding: 9px 14px; border-top: 1px solid var(--line); }
+  .match.mine { background: var(--mine); box-shadow: inset 3px 0 0 var(--mine-line); }
+  .when { color: var(--muted); font-size: 13px; white-space: nowrap; }
+  .home { text-align: right; } .away { text-align: left; }
+  .win { font-weight: 700; }
+  .score { text-align: center; font-weight: 750; font-variant-numeric: tabular-nums; background: var(--surface-2);
+           border: 1px solid var(--line); border-radius: 7px; padding: 2px 0; }
+  .score.pending { color: var(--muted); font-weight: 500; }
+  @media (max-width: 560px) {
+    .match { grid-template-columns: minmax(0, 1fr) 56px minmax(0, 1fr); }
+    .cards { grid-template-columns: 1fr 1fr; }
+    .big { font-size: 24px; }
+    .match .when { grid-column: 1 / -1; }
+    h1 { font-size: 23px; }
+  }
+  footer { color: var(--muted); font-size: 12px; text-align: center; }
+  footer a { color: inherit; }
+
+  a.tl { color: inherit; text-decoration: none; border-bottom: 1px dotted var(--muted); }
+  a.tl:hover { color: var(--accent); border-bottom-color: var(--accent); }
+  a.card.link { color: inherit; text-decoration: none; display: block; }
+  a.card.link:hover { border-color: var(--accent); }
+  .hint { font-size: 12px; font-weight: 500; color: var(--muted); margin-left: 6px; }
+  .back { color: var(--muted); text-decoration: none; font-size: 13px; }
+  .langs { float: right; font-size: 12px; font-weight: 600; letter-spacing: .04em; }
+  .langs a, .langs span { padding: 2px 6px; border-radius: 6px; text-decoration: none; color: var(--muted); }
+  .langs span { color: var(--text); background: var(--surface); border: 1px solid var(--line); }
+  .langs a:hover { color: var(--accent); }
+  .back:hover { color: var(--accent); }
+
+  /* team page */
+  .tm { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); margin-bottom: 14px; overflow: hidden; }
+  .tm-head { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+  .tm-head .opp { font-weight: 650; }
+  .tm-head .meta { color: var(--muted); font-size: 13px; }
+  .tm-head .res { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .tm-head .fs { font-weight: 750; font-size: 18px; font-variant-numeric: tabular-nums; }
+  .lineups { display: grid; grid-template-columns: 1fr 1fr; }
+  .lineup { padding: 10px 14px; }
+  .lineup + .lineup { border-left: 1px solid var(--line); }
+  .lineup h4 { margin: 0 0 6px; font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+  .slot { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 3px 0; font-size: 14px; }
+  .letter { width: 24px; height: 24px; border-radius: 6px; display: grid; place-items: center; font-weight: 750; font-size: 12px;
+            background: var(--surface-2); border: 1px solid var(--line); }
+  .letter.D { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  .sub-in { color: var(--muted); font-size: 12px; }
+  .wl { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .me { background: var(--mine); border-radius: 4px; padding: 0 3px; box-shadow: inset 0 -2px 0 var(--mine-line); }
+  details.games > summary { cursor: pointer; padding: 9px 14px; color: var(--muted); font-size: 13px; border-top: 1px solid var(--line); }
+  .game { display: grid; grid-template-columns: 22px 30px minmax(0, 1fr) 44px minmax(0, 1fr) 30px; gap: 8px; align-items: center;
+          padding: 7px 14px; border-top: 1px solid var(--line); font-size: 14px; }
+  .game .gno { color: var(--muted); font-size: 12px; }
+  .game .gs { text-align: center; font-weight: 750; font-variant-numeric: tabular-nums; border-radius: 6px; padding: 1px 0; color: #fff; }
+  .game .gs.w { background: var(--win); } .game .gs.l { background: var(--loss); }
+  .game .their { text-align: right; }
+  .game .sets { grid-column: 3 / -1; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; margin-top: -4px; }
+  .nosheet { padding: 10px 14px; color: var(--muted); font-size: 13px; }
+  @media (max-width: 560px) {
+    .lineups { grid-template-columns: 1fr; }
+    .lineup + .lineup { border-left: 0; border-top: 1px solid var(--line); }
+    .game { grid-template-columns: 22px 26px minmax(0, 1fr) 40px minmax(0, 1fr) 26px; gap: 6px; padding: 7px 10px; }
+  }
+
+  :root { --series: #d9480f; }
+  @media (prefers-color-scheme: dark) { :root { --series: #e8622a; } }
+  .rk { color: var(--muted); font-size: 12px; font-weight: 500; margin-top: 1px; font-variant-numeric: tabular-nums; }
+  .rk-inline { color: var(--muted); font-size: 11px; margin-left: 6px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .flag { font-size: 13px; color: var(--muted); font-weight: 500; margin-left: 8px; }
+
+  /* ranking chart */
+  .chart-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px 10px; margin-bottom: 24px; }
+  .chart-card h3 { margin: 0 0 2px; font-size: 14px; }
+  .plot { position: relative; height: 180px; margin: 14px 64px 26px 52px; outline: none; touch-action: pan-y; }
+  .plot svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .plot path { fill: none; stroke: var(--series); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+  .gl { position: absolute; left: 0; right: 0; border-top: 1px solid var(--line); }
+  .gl span { position: absolute; right: calc(100% + 8px); transform: translateY(-50%); font-size: 11px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .xt { position: absolute; top: 0; bottom: 0; border-left: 1px solid var(--line); }
+  .xt span { position: absolute; top: calc(100% + 6px); transform: translateX(-50%); font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .end-dot { position: absolute; width: 9px; height: 9px; border-radius: 50%; background: var(--series); box-shadow: 0 0 0 2px var(--surface); transform: translate(-50%, -50%); }
+  .end-label { position: absolute; left: calc(100% + 10px); transform: translateY(-50%); font-size: 13px; font-weight: 700; color: var(--text); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .xh { position: absolute; top: 0; bottom: 0; border-left: 1px solid var(--muted); pointer-events: none; }
+  .hover-dot { position: absolute; width: 9px; height: 9px; border-radius: 50%; background: var(--series); box-shadow: 0 0 0 2px var(--surface); transform: translate(-50%, -50%); pointer-events: none; }
+  .tip { position: absolute; top: -6px; transform: translate(-50%, -100%); background: var(--surface); border: 1px solid var(--line);
+         border-radius: 8px; padding: 6px 9px; font-size: 12px; white-space: nowrap; box-shadow: 0 4px 14px rgba(0,0,0,.12); pointer-events: none; z-index: 2; }
+  .tip strong { font-size: 14px; display: block; font-variant-numeric: tabular-nums; }
+  .tip .k { display: inline-block; width: 12px; height: 2px; background: var(--series); vertical-align: middle; margin-right: 5px; }
+  .tip span { color: var(--muted); }
+  .ev { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; padding: 8px 14px; background: var(--surface-2);
+        border-bottom: 1px solid var(--line); }
+  .ev + .tm-rows .row:first-child { border-top: 0; }
+  .tm-rows + .ev { border-top: 1px solid var(--line); }
+  .ev-name { font-size: 13px; font-weight: 650; }
+  .ev-res { margin-left: auto; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+  details.tbl > summary { cursor: pointer; color: var(--muted); font-size: 13px; padding-top: 4px; }
+  details.tbl table { margin-top: 8px; }
+  .tm-rows .row { display: grid; grid-template-columns: 110px minmax(0, 1fr) 54px 26px; gap: 10px; align-items: center;
+                  padding: 7px 14px; border-top: 1px solid var(--line); font-size: 14px; }
+  .tm-rows .row:first-child { border-top: 0; }
+  .stg { color: var(--muted); font-size: 12px; }
+  .unranked { font-size: 10px; color: var(--muted); border: 1px solid var(--line); border-radius: 99px; padding: 0 5px; margin-left: 6px; }
+  .pill.sm { width: 22px; height: 22px; font-size: 11px; border-radius: 6px; }
+  .gs2 { text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
+  @media (max-width: 560px) {
+    .plot { margin: 14px 54px 26px 44px; height: 160px; }
+    .tm-rows .row { grid-template-columns: 74px minmax(0, 1fr) 44px 22px; gap: 6px; padding: 7px 10px; }
+  }
+</style>
+{{end}}
+
+{{/* IT | EN switch; the argument is this page's path without the language prefix. */}}
+{{define "langswitch"}}<nav class="langs" aria-label="Lingua / Language">{{if eq lang "it"}}<span lang="it">IT</span><a href="{{alt .}}" lang="en" hreflang="en">EN</a>{{else}}<a href="{{alt .}}" lang="it" hreflang="it">IT</a><span lang="en">EN</span>{{end}}</nav>{{end}}
+
+{{/* A team name that links to its page when we know the team. */}}
+{{define "team"}}{{with teamURL .}}<a class="tl" href="{{.}}">{{$}}</a>{{else}}{{.}}{{end}}{{end}}
+
+{{/* A player name linking to their page (when there is one); me highlighted. */}}
+{{define "player"}}{{with playerURL .}}<a class="tl" href="{{.}}">{{template "pname" $}}</a>{{else}}{{template "pname" .}}{{end}}{{end}}
+{{define "pname"}}{{if me .}}<span class="me">{{.}}</span>{{else}}{{.}}{{end}}{{end}}
+
+{{/* Ranking points shown beside a name, when known. */}}
+{{define "pts"}}{{with rank .}}<span class="rk-inline" title="{{t .CategoryLabel}}{{if .Position}} · {{tf "#%d in the %s" .Position (t .RankingName)}}{{end}}">{{points .Points}}</span>{{end}}{{end}}
+
+{{/* Keeps "checked N min ago" fresh and reloads the page when the data changes.
+     A static build has no server to ask, so it only updates the age. */}}
+{{define "live"}}
+<script>
+(() => {
+  const checked = document.getElementById("checked");
+  const verb = {{if static}}{{t "Updated"}}{{else}}{{t "Checked"}}{{end}};
+  const L = {now: {{t "just now"}}, min: {{t "%d min ago"}}, h: {{t "%d h ago"}}, days: {{t "%d days ago"}}};
+
+  function ago(iso) {
+    if (!iso) return {{t "Fetching results…"}};
+    const s = Math.max(0, (Date.now() - new Date(iso)) / 1000);
+    if (s < 60) return `${verb} ${L.now}`;
+    if (s < 3600) return `${verb} ${L.min.replace("%d", Math.floor(s / 60))}`;
+    if (s < 172800) return `${verb} ${L.h.replace("%d", Math.floor(s / 3600))}`;
+    return `${verb} ${L.days.replace("%d", Math.floor(s / 86400))}`;
+  }
+  checked.textContent = ago(checked.dataset.at);
+  setInterval(() => (checked.textContent = ago(checked.dataset.at)), 10000);
+{{if not static}}
+  const version = {{.Version}};
+  const dot = document.getElementById("dot");
+  const btn = document.getElementById("refresh");
+  function apply(st) {
+    if (st.version !== version) { location.reload(); return; }
+    checked.dataset.at = st.checked_at && !st.checked_at.startsWith("0001") ? st.checked_at : "";
+    checked.textContent = ago(checked.dataset.at);
+    dot.className = "dot" + (st.fetching ? " busy" : st.error ? " err" : "");
+  }
+  async function poll() {
+    try { apply(await (await fetch("/api/status", {cache: "no-store"})).json()); }
+    catch { dot.className = "dot err"; checked.textContent = {{t "Local server not running"}}; }
+  }
+  btn.addEventListener("click", async () => {
+    btn.disabled = true; dot.className = "dot busy";
+    try { apply(await (await fetch("/api/refresh", {method: "POST"})).json()); }
+    finally { setTimeout(() => (btn.disabled = false), 60000); }
+  });
+  setInterval(poll, 20000);
+{{end}}
+})();
+</script>
+{{end}}

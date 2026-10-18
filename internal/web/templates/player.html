@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="{{lang}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.Name}} · FITET</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏓</text></svg>">
+{{template "style"}}
+</head>
+<body>
+<main>
+  {{template "langswitch" (printf "/player/%d" .ID)}}
+  {{with .Team}}{{with teamURL .}}<a class="back" href="{{.}}">← {{$.Team}}</a>{{end}}{{else}}<a class="back" href="{{home}}">← {{.GroupName}}</a>{{end}}
+  <header style="margin-top:6px">
+    <div>
+      <div class="eyebrow">{{t "Player"}}{{with .Ranking}} · {{.Sector}}{{end}}{{with .Season}} · {{tf "season %s" .Season}}{{end}}</div>
+      <h1>{{if me .Name}}<span class="me">{{.Name}}</span>{{else}}{{.Name}}{{end}}{{with .Ranking}}{{with .Country}}<span class="flag">{{.}}</span>{{end}}{{end}}</h1>
+      {{with .Ranking}}<div class="sub">{{.Club}}{{with .Region}} · {{.}}{{end}}</div>{{end}}
+    </div>
+    <div class="status">
+      <span class="dot{{if .Error}} err{{end}}" id="dot"></span>
+      <span id="checked" data-at="{{iso .FetchedAt}}">{{t "Fetched"}} {{date .FetchedAt}}</span>
+      <a href="https://portale.fitet.org/risultati/incontri_atleta_acc.php?ATLETA={{.ID}}" target="_blank" rel="noopener"><button type="button">{{t "On FITET ↗"}}</button></a>
+    </div>
+  </header>
+
+  <div class="cards">
+    {{with .Ranking}}
+    <div class="card">
+      <h3>{{tf "Ranking · %s" .AsOf}}</h3>
+      <div class="big num">{{points .Points}}<span class="sub"> {{t "pts"}}</span></div>
+      <div class="sub">{{t .CategoryLabel}}{{if .Position}} · {{tf "#%d in the %s" .Position (t .RankingName)}}{{else if eq .Category "Straniero"}} · {{t "foreign players have no national position"}}{{end}}</div>
+    </div>
+    <div class="card">
+      <h3>{{t "This season"}}</h3>
+      <div class="big num">{{if ge .Gained 0.0}}+{{end}}{{points .Gained}}<span class="sub"> {{t "pts"}}</span></div>
+      <div class="sub num">{{tf "from %s · %d–%d in ranked matches" (points .StartPoints) .Won .Lost}}</div>
+    </div>
+    {{with .Best}}
+    <div class="card">
+      <h3>{{t "Best ever"}}</h3>
+      <div class="big" style="font-size:22px">{{.}}</div>
+      <div class="sub">{{t "highest national position"}}</div>
+    </div>
+    {{end}}
+    {{else}}
+    <div class="card"><h3>{{t "Ranking"}}</h3><div class="sub">{{if .RankErr}}{{t .RankErr}}{{else}}{{t "Not available"}}{{end}}</div></div>
+    {{end}}
+    <div class="card">
+      <h3>{{tf "Matches %s" .Season.Season}}</h3>
+      <div class="big num">{{.All.Won}}–{{.All.Lost}}<span class="sub"> · {{pct .All.Won .All.Lost}}</span></div>
+      <div class="sub num">{{tf "sets %d–%d" .All.SetsFor .All.SetsAgst}}</div>
+    </div>
+  </div>
+
+  {{with .Chart}}
+  <section class="chart-card">
+    <h3>{{t "Ranking points"}}</h3>
+    <div class="sub">{{t "Every ranking publication"}}{{with $.Ranking}}{{tf " since %s" (index .History (sub (len .History) 1)).Date}}{{end}}. {{t "Hover or use ← → for details."}}</div>
+    <div class="plot" id="plot" tabindex="0" role="img" aria-label="{{tf "Ranking points over time, now %s" (points .Last.Points)}}">
+      {{range .YTicks}}<div class="gl" style="top:{{.Pct}}%"><span>{{points .Value}}</span></div>{{end}}
+      {{range .XTicks}}<div class="xt" style="left:{{.Pct}}%"><span>{{.Label}}</span></div>{{end}}
+      <svg viewBox="0 0 1000 100" preserveAspectRatio="none" aria-hidden="true"><path d="{{.Path}}"/></svg>
+      <div class="end-dot" style="left:{{.Last.X}}%;top:{{.Last.Y}}%"></div>
+      <div class="end-label" style="top:{{.Last.Y}}%">{{points .Last.Points}}</div>
+      <div class="xh" id="xh" hidden></div>
+      <div class="hover-dot" id="hdot" hidden></div>
+      <div class="tip" id="tip" hidden></div>
+    </div>
+    {{with $.Ranking}}
+    <details class="tbl">
+      <summary>{{t "Show as table"}}</summary>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>{{t "Ranking of"}}</th><th class="n">{{t "Points"}}</th><th class="n">{{t "Position"}}</th><th class="n">Cat.</th></tr></thead>
+          <tbody>{{range .History}}<tr><td>{{.Date}}</td><td class="n">{{.Points}}</td><td class="n">{{if .Position}}#{{.Position}}{{else}}–{{end}}</td><td class="n">{{.Category}}</td></tr>{{end}}</tbody>
+        </table>
+      </div>
+    </details>
+    {{end}}
+  </section>
+  <script>
+  (() => {
+    const pts = {{.Points}};
+    const locale = {{lang}} === "it" ? "it-IT" : "en-GB", unit = {{t "pts"}};
+    const num = v => v.toLocaleString(locale, {maximumFractionDigits: 2});
+    const day = d => new Date(d).toLocaleDateString(locale, {day: "numeric", month: "short", year: "numeric", timeZone: "UTC"});
+    const plot = document.getElementById("plot"), xh = document.getElementById("xh"),
+          dot = document.getElementById("hdot"), tip = document.getElementById("tip");
+    let cur = -1;
+    function show(i) {
+      cur = Math.max(0, Math.min(pts.length - 1, i));
+      const p = pts[cur];
+      for (const el of [xh, dot, tip]) { el.hidden = false; el.style.left = p.x + "%"; }
+      dot.style.top = p.y + "%";
+      tip.replaceChildren();
+      const strong = document.createElement("strong");
+      const key = document.createElement("i"); key.className = "k";
+      strong.append(key, document.createTextNode(num(p.v) + " " + unit));
+      const meta = document.createElement("span");
+      meta.textContent = day(p.d) + (p.p ? " · #" + p.p : "") + " · cat. " + p.c;
+      tip.append(strong, meta);
+      // keep the tooltip inside the plot
+      tip.style.transform = p.x < 15 ? "translate(0,-100%)" : p.x > 85 ? "translate(-100%,-100%)" : "translate(-50%,-100%)";
+    }
+    function hide() { for (const el of [xh, dot, tip]) el.hidden = true; }
+    plot.addEventListener("pointermove", e => {
+      const r = plot.getBoundingClientRect(), x = 100 * (e.clientX - r.left) / r.width;
+      let best = 0;
+      pts.forEach((p, i) => { if (Math.abs(p.x - x) < Math.abs(pts[best].x - x)) best = i; });
+      show(best);
+    });
+    plot.addEventListener("pointerleave", hide);
+    plot.addEventListener("blur", hide);
+    plot.addEventListener("keydown", e => {
+      if (e.key === "ArrowLeft") { show(cur < 0 ? pts.length - 1 : cur - 1); e.preventDefault(); }
+      if (e.key === "ArrowRight") { show(cur < 0 ? pts.length - 1 : cur + 1); e.preventDefault(); }
+    });
+  })();
+  </script>
+  {{end}}
+
+  {{if .Totals}}
+  <section>
+    <h2>{{t "By competition"}}</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>{{t "Competition"}}</th><th class="n">{{t "W–L"}}</th><th class="n">{{t "Win %"}}</th><th class="n">{{t "Sets"}}</th></tr></thead>
+        <tbody>
+        {{range .Totals}}<tr><td class="team">{{t .Label}}</td><td class="n">{{.Won}}–{{.Lost}}</td><td class="n">{{pct .Won .Lost}}</td><td class="n">{{.SetsFor}}–{{.SetsAgst}}</td></tr>{{end}}
+        <tr><td class="team"><b>{{t "Total"}}</b></td><td class="n"><b>{{.All.Won}}–{{.All.Lost}}</b></td><td class="n"><b>{{pct .All.Won .All.Lost}}</b></td><td class="n">{{.All.SetsFor}}–{{.All.SetsAgst}}</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {{end}}
+
+  {{with .Season}}
+  {{if .Team}}
+  <section>
+    <h2>{{t "Team championships"}}</h2>
+    <div class="tm tm-rows">{{range .Team}}{{template "amatch" .}}{{end}}</div>
+  </section>
+  {{end}}
+  {{if .Playoff}}
+  <section>
+    <h2>{{t "Play-off / out"}}</h2>
+    <div class="tm tm-rows">{{range .Playoff}}{{template "amatch" .}}{{end}}</div>
+  </section>
+  {{end}}
+  {{end}}
+
+  {{if .Tournaments}}
+  <section>
+    <h2>{{t "Tournaments"}}</h2>
+    {{range .Tournaments}}{{$multi := gt (len .Events) 1}}
+    <article class="tm">
+      <div class="tm-head">
+        <span class="opp">{{.Title}}</span>
+        <span class="res"><span class="fs" style="font-size:15px">{{.Won}}–{{.Lost}}</span></span>
+      </div>
+      {{range .Events}}
+      <div class="ev">
+        <span class="ev-name" title="{{t "Category played"}}">{{.Name}}</span>
+        <span class="ev-res">{{if .Winner}}{{t "🏆 Winner"}}{{else if .Reached}}{{tf "reached %s" (stage .Reached)}}{{end}}{{if $multi}} · {{.Won}}–{{.Lost}}{{end}}</span>
+      </div>
+      <div class="tm-rows">{{range .Matches}}{{template "amatch" .}}{{end}}</div>
+      {{end}}
+    </article>
+    {{end}}
+  </section>
+  {{end}}
+
+  {{if not .All.Won}}{{if not .All.Lost}}<p class="sub">{{t "No matches recorded this season yet."}}</p>{{end}}{{end}}
+
+  <footer>{{t "From the FITET portal: match record (“scheda incontri”) and national ranking"}}{{with .Ranking}}{{tf " of %s" .AsOf}}{{end}}.
+  {{t "Matches marked “not ranked” don't count for the ranking."}}</footer>
+</main>
+</body>
+</html>
+
+{{define "amatch"}}
+<div class="row">
+  <span class="stg">{{if .Stage}}{{stage .Stage}}{{else}}{{.Event}}{{end}}</span>
+  <span>{{template "player" .Opponent}}{{template "pts" .Opponent}}{{if not .Ranked}}<span class="unranked">{{t "not ranked"}}</span>{{end}}</span>
+  <span class="gs2">{{.For}}–{{.Against}}</span>
+  <span class="pill sm {{if .Won}}V{{else}}P{{end}}">{{if .Won}}V{{else}}P{{end}}</span>
+</div>
+{{end}}

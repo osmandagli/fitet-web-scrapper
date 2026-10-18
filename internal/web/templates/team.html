@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="{{lang}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.Row.Team}} · {{.GroupName}}</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏓</text></svg>">
+{{template "style"}}
+</head>
+<body>
+<main>
+  {{template "langswitch" (printf "/team/%d" .Row.TeamID)}}
+  <a class="back" href="{{home}}">← {{.GroupName}}</a>
+  <header style="margin-top:6px">
+    <div>
+      <div class="eyebrow">{{tf "%s place" (ordinal .Row.Pos)}} · {{.Row.Points}} {{t "pts"}}</div>
+      <h1>{{.Row.Team}}</h1>
+    </div>
+    <div class="status">
+      <span class="dot{{if .Error}} err{{end}}" id="dot"></span>
+      <span id="checked" data-at="{{if not .CheckedAt.IsZero}}{{iso .CheckedAt}}{{end}}">{{if static}}{{t "Updated"}}{{else}}{{t "Checked"}}{{end}} {{date .CheckedAt}}</span>
+      {{if not static}}<button id="refresh" type="button">{{t "Refresh now"}}</button>{{end}}
+    </div>
+  </header>
+
+  {{if .Error}}<div class="error">{{tf "Couldn't reach the FITET portal: %s. Showing the last data I had." .Error}}</div>{{end}}
+
+  <div class="cards">
+    <div class="card">
+      <h3>{{t "Record"}}</h3>
+      <div class="big num">{{.Row.Won}}–{{.Row.Lost}}{{if .Row.Drawn}}–{{.Row.Drawn}}{{end}}</div>
+      <div class="sub num">{{tf "games %d–%d · sets %d–%d" .Row.GamesWon .Row.GamesLost .Row.SetsWon .Row.SetsLost}}</div>
+    </div>
+    <div class="card">
+      <h3>{{t "Matches played"}}</h3>
+      <div class="big num">{{.Played}}<span class="sub"> / {{.Total}}</span></div>
+    </div>
+    {{if .Form}}
+    <div class="card">
+      <h3>{{t "Form"}}</h3>
+      <div class="form">{{range .Form}}<span class="pill {{.Result}}" title="{{tf "R%d" .Round}} {{.For}}-{{.Against}} vs {{.Opponent}}">{{.Result}}</span>{{end}}</div>
+      <div class="sub" style="margin-top:6px">{{t "V = win · P = loss · N = draw"}}</div>
+    </div>
+    {{end}}
+  </div>
+
+  {{if .Players}}
+  <section>
+    <h2>{{t "Players"}}</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>{{t "Player"}} <span class="hint">{{t "ranking · points · national position"}}</span></th><th class="n" title="{{t "Matches appeared in"}}">{{t "M"}}</th>
+          <th class="n">{{t "Singles"}}</th><th class="n">{{t "Win %"}}</th><th class="n">{{t "Sets"}}</th>
+          <th class="n">{{t "Doubles"}}</th><th>{{t "Positions"}}</th>
+        </tr></thead>
+        <tbody>
+        {{range .Players}}
+          <tr>
+            <td class="team">{{template "player" .Name}}{{with rank .Name}}<div class="rk">{{t .CategoryLabel}} · {{points .Points}} {{t "pts"}}{{if .Position}} · <span title="{{t .RankingName}}">#{{.Position}}{{if eq .Gender "F"}} {{t "(W)"}}{{end}}</span>{{end}}</div>{{end}}</td>
+            <td class="n">{{.Matches}}</td>
+            <td class="n">{{.SinglesW}}–{{.SinglesL}}</td>
+            <td class="n">{{pct .SinglesW .SinglesL}}</td>
+            <td class="n">{{.SetsWon}}–{{.SetsLost}}</td>
+            <td class="n">{{if or .DoublesW .DoublesL}}{{.DoublesW}}–{{.DoublesL}}{{else}}–{{end}}</td>
+            <td>{{.Positions}}</td>
+          </tr>
+        {{end}}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {{end}}
+
+  <section>
+    <h2>{{t "Recent matches"}}</h2>
+    {{range .Recent}}
+    <article class="tm">
+      <div class="tm-head">
+        <span class="meta">{{tf "R%d" .Round}} · {{date .When}} · {{if .AtHome}}{{t "home"}}{{else}}{{t "away"}}{{end}}</span>
+        <span class="opp">{{if .AtHome}}vs{{else}}@{{end}} {{template "team" .Opponent}}</span>
+        {{if .New}}<span class="tag new">{{t "New"}}</span>{{end}}
+        <span class="res"><span class="fs">{{.For}} – {{.Against}}</span><span class="pill {{.Result}}">{{.Result}}</span></span>
+      </div>
+      {{with .Sheet}}
+        {{if .Side}}
+        <div class="lineups">
+          <div class="lineup">
+            <h4>{{t "Lineup"}} · {{.Side}}</h4>
+            {{range .Ours}}{{template "slot" .}}{{end}}
+          </div>
+          <div class="lineup">
+            <h4>{{t "Opponent"}} · {{if eq .Side "ABC"}}XYZ{{else}}ABC{{end}}</h4>
+            {{range .Theirs}}{{template "slot" .}}{{end}}
+          </div>
+        </div>
+        {{end}}
+        <details class="games">
+          <summary>{{tf "All %d games" (len .Games)}}</summary>
+          {{range .Games}}
+          <div class="game">
+            <span class="gno">{{.No}}</span>
+            <span class="letter{{if .Double}} D{{end}}">{{.OurLetter}}</span>
+            <span class="ours{{if .Won}} win{{end}}">{{range $i, $p := .Our}}{{if $i}} / {{end}}{{template "player" $p}}{{end}}</span>
+            <span class="gs {{if .Won}}w{{else}}l{{end}}">{{.OurSets}}–{{.TheirSets}}</span>
+            <span class="their{{if not .Won}} win{{end}}">{{range $i, $p := .Their}}{{if $i}} / {{end}}{{template "player" $p}}{{end}}</span>
+            <span class="letter{{if .Double}} D{{end}}">{{.TheirLetter}}</span>
+            <span class="sets">{{range $i, $s := .Sets}}{{if $i}} · {{end}}{{$s}}{{end}}</span>
+          </div>
+          {{end}}
+        </details>
+      {{else}}
+        <div class="nosheet">{{if static}}{{t "Score sheet not downloaded yet, it will appear after the next update."}}{{else}}{{t "Score sheet not downloaded yet, it will appear after the next check."}}{{end}}</div>
+      {{end}}
+    </article>
+    {{else}}
+    <p class="sub">{{t "No matches played yet."}}</p>
+    {{end}}
+  </section>
+
+  {{if .Upcoming}}
+  <section>
+    <h2>{{t "Coming up"}}</h2>
+    <div class="table-wrap">
+      {{range .Upcoming}}
+      <div class="match{{if .Mine}} mine{{end}}">
+        <span class="when">{{date .When}}</span>
+        <span class="home">{{template "team" .Home}}</span>
+        <span class="score pending">{{tf "R%d" .Round}}</span>
+        <span class="away">{{template "team" .Away}}</span>
+      </div>
+      {{end}}
+    </div>
+  </section>
+  {{end}}
+
+  <footer>{{t "Lineups follow the regional formula (Regolamento Attività a Squadre 2026/27, art. 1.6.1): A–X, B–Y, C–Z, Doppio, B–X, A–Z, C–Y."}}
+  <br>{{t "Data from"}} <a href="https://portale.fitet.org" target="_blank" rel="noopener">portale.fitet.org</a> · {{if static}}{{tf "updated %s" (date .CheckedAt)}}{{else}}{{tf "checked every %s" (every .Every)}}{{end}}</footer>
+</main>
+{{template "live" .}}
+</body>
+</html>
+
+{{define "slot"}}
+<div class="slot">
+  <span class="letter {{.Letter}}">{{.Letter}}</span>
+  <span>{{range $i, $p := .Players}}{{if eq $i 0}}{{template "player" $p}}{{template "pts" $p}}{{else if eq $.Letter "D"}} / {{template "player" $p}}{{template "pts" $p}}{{else}} <span class="sub-in">→ {{template "player" $p}}{{template "pts" $p}}</span>{{end}}{{end}}</span>
+  <span class="wl">{{.Won}}–{{.Lost}}</span>
+</div>
+{{end}}

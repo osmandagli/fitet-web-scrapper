@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="{{lang}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{with .GroupName}}{{.}}{{else}}FITET{{end}} · {{t "Results"}}</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏓</text></svg>">
+{{template "style"}}
+</head>
+<body>
+<main>
+  {{template "langswitch" "/"}}
+  <header>
+    <div>
+      <div class="eyebrow">FITET Lombardia</div>
+      <h1>{{with .GroupName}}{{.}}{{else}}{{t "Loading…"}}{{end}}</h1>
+    </div>
+    <div class="status">
+      <span class="dot{{if .Error}} err{{end}}" id="dot"></span>
+      <span id="checked" data-at="{{if not .CheckedAt.IsZero}}{{iso .CheckedAt}}{{end}}">
+        {{if .CheckedAt.IsZero}}{{t "Fetching results…"}}{{else}}{{if static}}{{t "Updated"}}{{else}}{{t "Checked"}}{{end}} {{date .CheckedAt}}{{end}}
+      </span>
+      {{if not static}}<button id="refresh" type="button">{{t "Refresh now"}}</button>{{end}}
+    </div>
+  </header>
+
+  {{if .Error}}<div class="error">{{tf "Couldn't reach the FITET portal: %s. Showing the last data I had." .Error}}</div>{{end}}
+
+  {{if .Standings}}
+  <div class="cards">
+    {{with .MyRow}}
+    <a class="card link" href="{{teamURL .Team}}">
+      <h3>{{.Team}} ›</h3>
+      <div class="big num">{{ordinal .Pos}} <span class="sub">· {{.Points}} {{t "pts"}}</span></div>
+      <div class="sub num">{{tf "%dW %dD %dL" .Won .Drawn .Lost}} · {{tf "games %d–%d · sets %d–%d" .GamesWon .GamesLost .SetsWon .SetsLost}}</div>
+    </a>
+    {{end}}
+    {{with .NextMatch}}
+    <div class="card">
+      <h3>{{t "Next match"}}</h3>
+      <div class="big" style="font-size:20px">{{if .AtHome}}vs{{else}}@{{end}} {{template "team" .Opponent}}</div>
+      <div class="sub">{{date .When}} · {{if .AtHome}}{{t "home"}}{{else}}{{t "away"}}{{end}} · {{tf "round %d" .Round}}</div>
+    </div>
+    {{end}}
+    {{if .Form}}
+    <div class="card">
+      <h3>{{t "Form"}}</h3>
+      <div class="form">{{range .Form}}<span class="pill {{.Result}}" title="{{tf "R%d" .Round}} {{.Score}} vs {{.Opponent}}">{{.Result}}</span>{{end}}</div>
+      <div class="sub" style="margin-top:6px">{{t "V = win · P = loss · N = draw"}}</div>
+    </div>
+    {{end}}
+    {{if .MyRow}}
+    <div class="card">
+      <h3>{{t "Matches played"}}</h3>
+      <div class="big num">{{.MyPlayed}}<span class="sub"> / {{.MyTotal}}</span></div>
+      <div class="sub">{{tf "%d left this season" (sub .MyTotal .MyPlayed)}}</div>
+    </div>
+    {{end}}
+  </div>
+
+  <section>
+    <h2>{{t "Standings"}} <span class="hint">{{t "tap a team to see its lineups"}}</span></h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th class="n">#</th><th>{{t "Team"}}</th><th class="n" title="Punti">{{t "Pts"}}</th>
+          <th class="n" title="Incontri disputati">{{t "P"}}</th><th class="n" title="Vinti">{{t "W"}}</th>
+          <th class="n" title="Pareggiati">{{t "D"}}</th><th class="n" title="Persi">{{t "L"}}</th>
+          <th class="n" title="Partite vinte–perse">{{t "Games"}}</th><th class="n" title="Set vinti–persi">{{t "Sets"}}</th>
+          <th class="n" title="Punti vinti–persi">{{t "Points"}}</th><th class="n" title="Differenza punti">±</th>
+        </tr></thead>
+        <tbody>
+        {{range .Standings}}
+          <tr{{if mine .Team}} class="mine"{{end}}>
+            <td class="n">{{.Pos}}</td><td class="team">{{template "team" .Team}}</td><td class="n pts">{{.Points}}</td>
+            <td class="n">{{.Played}}</td><td class="n">{{.Won}}</td><td class="n">{{.Drawn}}</td><td class="n">{{.Lost}}</td>
+            <td class="n">{{.GamesWon}}–{{.GamesLost}}</td><td class="n">{{.SetsWon}}–{{.SetsLost}}</td>
+            <td class="n">{{.PointsWon}}–{{.PointsLost}}</td>
+            {{$d := sub .PointsWon .PointsLost}}<td class="n {{if gt $d 0}}diff-pos{{else if lt $d 0}}diff-neg{{end}}">{{signed $d}}</td>
+          </tr>
+        {{end}}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>{{t "Results & fixtures"}}</h2>
+    {{range .Rounds}}
+    <details class="round"{{if .Open}} open{{end}}>
+      <summary>
+        <span class="rname">{{tf "Round %d" .Number}}</span><span class="leg">{{.Leg}}</span>
+        {{if .Done}}<span class="tag done">{{t "Done"}}</span>{{end}}
+        {{range .Matches}}{{if .New}}<span class="tag new">{{t "New"}}</span>{{break}}{{end}}{{end}}
+        <span class="rdate">{{short .From}}{{if ne (short .From) (short .To)}} – {{short .To}}{{end}}</span>
+      </summary>
+      {{range .Matches}}
+      <div class="match{{if .Mine}} mine{{end}}">
+        <span class="when">{{date .When}}{{if .New}} <span class="tag new">{{t "New"}}</span>{{end}}</span>
+        <span class="home{{if .HomeWins}} win{{end}}">{{template "team" .Home}}</span>
+        <span class="score{{if not .Played}} pending{{end}}">{{if .Played}}{{.HomeScore}} – {{.AwayScore}}{{else}}vs{{end}}</span>
+        <span class="away{{if .AwayWins}} win{{end}}">{{template "team" .Away}}</span>
+      </div>
+      {{end}}
+    </details>
+    {{end}}
+  </section>
+  {{else if not .Error}}
+  <p class="sub">{{t "Fetching results from the FITET portal…"}} {{if not static}}{{t "this page will update by itself."}}{{end}}</p>
+  {{end}}
+
+  <footer>{{t "Data from"}} <a href="https://portale.fitet.org" target="_blank" rel="noopener">portale.fitet.org</a> · {{if static}}{{tf "updated %s" (date .CheckedAt)}}{{else}}{{tf "checked every %s" (every .Every)}}{{end}}</footer>
+</main>
+
+{{template "live" .}}
+</body>
+</html>
